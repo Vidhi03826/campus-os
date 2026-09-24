@@ -1,0 +1,79 @@
+services:
+
+  mysql:
+    image: mysql:8.4
+    container_name: campusos-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: campus_os_db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    volumes:
+      - campusos_mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusos-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - campusos_redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: campusos-app
+    restart: unless-stopped
+
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/campus_os_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: "3600000"
+      JWT_REFRESH_EXPIRATION: "604800000"
+
+      APP_STORAGE_RESUME_DIR: /app/uploads/resumes
+
+    ports:
+      - "8081:8080"
+
+    volumes:
+      - ./uploads:/app/uploads
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+
+volumes:
+  campusos_mysql_data:
+  campusos_redis_data:

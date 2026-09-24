@@ -1,0 +1,9 @@
+### Register Student
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Vidhi",
+  "email": "vidhi@example.com",
+  "password": "StrongPassword123"
+}
