@@ -19,6 +19,8 @@ RUN mvn clean package -DskipTests
 # =========================
 FROM eclipse-temurin:17-jre
 
+LABEL org.opencontainers.image.source="https://github.com/Vidhi03826/campus-os"
+
 WORKDIR /app
 
 COPY --from=build /app/target/*.jar app.jar
