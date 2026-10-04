@@ -62,8 +62,9 @@ public class StudentResumeController {
                 );
 
         return ResponseEntity.ok()
-                .contentType(
-                        MediaType.APPLICATION_PDF
+                .contentType(MediaType.APPLICATION_PDF)
+                .cacheControl(
+                        org.springframework.http.CacheControl.noStore()
                 )
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
@@ -72,6 +73,10 @@ public class StudentResumeController {
                                 .filename("resume.pdf")
                                 .build()
                                 .toString()
+                )
+                .header(
+                        "X-Content-Type-Options",
+                        "nosniff"
                 )
                 .body(resource);
     }

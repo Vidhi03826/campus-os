@@ -28,14 +28,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-    private final com.vidhi.campusos.service.RefreshTokenService refreshTokenService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
             JwtService jwtService,
-            com.vidhi.campusos.service.RefreshTokenService refreshTokenService
+            RefreshTokenService refreshTokenService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -52,6 +52,7 @@ public class AuthService {
                 .toLowerCase(Locale.ROOT);
 
         if (userRepository.existsByEmail(email)) {
+
             throw new ResourceAlreadyExistsException(
                     "An account with this email already exists"
             );
@@ -91,12 +92,14 @@ public class AuthService {
                 );
 
         if (!user.isActive()) {
+
             throw new AccountLockedException(
                     "Account is inactive"
             );
         }
 
         if (user.isAccountLocked()) {
+
             throw new AccountLockedException(
                     "Account is locked due to repeated failed login attempts"
             );
@@ -123,26 +126,28 @@ public class AuthService {
         user.setFailedLoginAttempts(0);
         userRepository.save(user);
 
-        String accessToken = jwtService.generateToken(
-                user.getEmail(),
-                Set.of(user.getRole().name())
-        );
+        String accessToken =
+                jwtService.generateToken(
+                        user.getEmail(),
+                        Set.of(user.getRole().name())
+                );
 
-        RefreshToken refreshToken =
+        String refreshToken =
                 refreshTokenService.createRefreshToken(
                         user.getEmail()
                 );
 
         return new TokenResponse(
                 accessToken,
-                refreshToken.getToken()
+                refreshToken
         );
     }
 
     @Transactional
     private void handleFailedLogin(User user) {
 
-        int attempts = user.getFailedLoginAttempts() + 1;
+        int attempts =
+                user.getFailedLoginAttempts() + 1;
 
         user.setFailedLoginAttempts(attempts);
 
@@ -158,31 +163,53 @@ public class AuthService {
             String refreshTokenValue
     ) {
 
-        RefreshToken refreshToken =
+        /*
+         * Verification obtains a PESSIMISTIC_WRITE lock on the
+         * corresponding refresh-token row.
+         */
+        RefreshToken oldRefreshToken =
                 refreshTokenService.verifyRefreshToken(
                         refreshTokenValue
                 );
 
-        User user = refreshToken.getUser();
+        User user =
+                oldRefreshToken.getUser();
 
-        String accessToken = jwtService.generateToken(
-                user.getEmail(),
-                Set.of(user.getRole().name())
-        );
-
-        RefreshToken newRefreshToken =
+        /*
+         * Rotate the old token.
+         *
+         * Because this method is transactional and the old row
+         * is already locked, a second concurrent refresh request
+         * cannot successfully reuse the same token.
+         */
+        String newRefreshToken =
                 refreshTokenService.rotateRefreshToken(
-                        refreshToken
+                        oldRefreshToken
+                );
+
+        /*
+         * Generate the new access token after successful rotation.
+         *
+         * If anything fails inside this transaction, the database
+         * changes can roll back together.
+         */
+        String accessToken =
+                jwtService.generateToken(
+                        user.getEmail(),
+                        Set.of(user.getRole().name())
                 );
 
         return new TokenResponse(
                 accessToken,
-                newRefreshToken.getToken()
+                newRefreshToken
         );
     }
 
     @Transactional
     public void logout(String refreshTokenValue) {
-        refreshTokenService.revoke(refreshTokenValue);
+
+        refreshTokenService.revoke(
+                refreshTokenValue
+        );
     }
 }

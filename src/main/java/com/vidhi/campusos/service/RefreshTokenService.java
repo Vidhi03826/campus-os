@@ -10,14 +10,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.UUID;
+import java.util.Base64;
 
 @Service
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpiration;
@@ -30,8 +36,14 @@ public class RefreshTokenService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Creates a new refresh token.
+     *
+     * Returns the RAW token to the caller so it can be sent to the client.
+     * Only the HASH is persisted in the database.
+     */
     @Transactional
-    public RefreshToken createRefreshToken(String email) {
+    public String createRefreshToken(String email) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
@@ -40,10 +52,12 @@ public class RefreshTokenService {
                         )
                 );
 
+        String rawToken = generateRawToken();
+
         RefreshToken refreshToken = new RefreshToken();
 
-        refreshToken.setToken(
-                UUID.randomUUID().toString()
+        refreshToken.setTokenHash(
+                hashToken(rawToken)
         );
 
         refreshToken.setUser(user);
@@ -54,13 +68,23 @@ public class RefreshTokenService {
 
         refreshToken.setRevoked(false);
 
-        return refreshTokenRepository.save(refreshToken);
+        refreshTokenRepository.save(refreshToken);
+
+        return rawToken;
     }
 
-    public RefreshToken verifyRefreshToken(String token) {
+    /**
+     * Verifies a refresh token while taking a database row lock.
+     *
+     * The lock is important for preventing two concurrent refresh
+     * requests from successfully using the same token.
+     */
+    public RefreshToken verifyRefreshToken(String rawToken) {
+
+        String tokenHash = hashToken(rawToken);
 
         RefreshToken refreshToken =
-                refreshTokenRepository.findByToken(token)
+                refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                         .orElseThrow(() ->
                                 new InvalidRefreshTokenException(
                                         "Invalid refresh token"
@@ -84,11 +108,16 @@ public class RefreshTokenService {
         return refreshToken;
     }
 
+    /**
+     * Revokes a refresh token.
+     */
     @Transactional
-    public void revoke(String token) {
+    public void revoke(String rawToken) {
+
+        String tokenHash = hashToken(rawToken);
 
         RefreshToken refreshToken =
-                refreshTokenRepository.findByToken(token)
+                refreshTokenRepository.findByTokenHashForUpdate(tokenHash)
                         .orElseThrow(() ->
                                 new InvalidRefreshTokenException(
                                         "Invalid refresh token"
@@ -100,8 +129,14 @@ public class RefreshTokenService {
         refreshTokenRepository.save(refreshToken);
     }
 
-    @Transactional
-    public RefreshToken rotateRefreshToken(
+    /**
+     * Rotates a validated refresh token.
+     *
+     * The old token is revoked and a completely new refresh token
+     * is generated.
+     *
+
+    public String rotateRefreshToken(
             RefreshToken oldToken
     ) {
 
@@ -112,5 +147,70 @@ public class RefreshTokenService {
         return createRefreshToken(
                 oldToken.getUser().getEmail()
         );
+    }
+
+    /**
+     * Generates a cryptographically strong random refresh token.
+     *
+     * 32 random bytes -> URL-safe Base64 string.
+     */
+    private String generateRawToken() {
+
+        byte[] randomBytes = new byte[32];
+
+        secureRandom.nextBytes(randomBytes);
+
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(randomBytes);
+    }
+    @Transactional
+    public String rotateRefreshToken(RefreshToken oldToken) {
+
+        oldToken.setRevoked(true);
+
+        refreshTokenRepository.save(oldToken);
+
+        return createRefreshToken(
+                oldToken.getUser().getEmail()
+        );
+    }
+
+    /**
+     * Hashes a raw token using SHA-256.
+     *
+     * The database never receives the raw refresh token.
+     */
+    private String hashToken(String rawToken) {
+
+        try {
+
+            MessageDigest digest =
+                    MessageDigest.getInstance("SHA-256");
+
+            byte[] hash =
+                    digest.digest(
+                            rawToken.getBytes(StandardCharsets.UTF_8)
+                    );
+
+            StringBuilder hex = new StringBuilder(
+                    hash.length * 2
+            );
+
+            for (byte b : hash) {
+                hex.append(
+                        String.format("%02x", b)
+                );
+            }
+
+            return hex.toString();
+
+        } catch (NoSuchAlgorithmException exception) {
+
+            throw new IllegalStateException(
+                    "SHA-256 algorithm is not available",
+                    exception
+            );
+        }
     }
 }

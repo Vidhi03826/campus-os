@@ -2,6 +2,8 @@ package com.vidhi.campusos.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import jakarta.persistence.Entity;
+
 
 @Entity
 @Table(name = "users")

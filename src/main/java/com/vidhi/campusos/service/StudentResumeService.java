@@ -18,9 +18,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Paths;
+import java.util.Locale;
 
 @Service
 public class StudentResumeService {
+
+    private static final String PDF_CONTENT_TYPE =
+            "application/pdf";
 
     private final ResumeRepository resumeRepository;
     private final StudentProfileRepository studentProfileRepository;
@@ -49,9 +55,14 @@ public class StudentResumeService {
             MultipartFile file
     ) throws IOException {
 
+        /*
+         * Validate before touching the filesystem
+         * or database.
+         */
         validationService.validate(file);
 
-        User user = getCurrentUser(userDetails);
+        User user =
+                getCurrentUser(userDetails);
 
         StudentProfile student =
                 studentProfileRepository
@@ -62,8 +73,9 @@ public class StudentResumeService {
                                 )
                         );
 
-        if( resumeRepository.existsByStudent_User_Id(user.getId()))
-        {
+        if (resumeRepository
+                .existsByStudent_User_Id(user.getId())) {
+
             throw new ResourceAlreadyExistsException(
                     "Resume already exists"
             );
@@ -72,17 +84,47 @@ public class StudentResumeService {
         String storageKey =
                 storageService.store(file);
 
-        Resume resume = new Resume(
-                student,
-                extractOriginalFileName(file),
-                storageKey,
-                file.getContentType(),
-                file.getSize()
-        );
+        try {
 
-        Resume saved = resumeRepository.save(resume);
+            Resume resume =
+                    new Resume(
+                            student,
+                            extractOriginalFileName(file),
+                            storageKey,
+                            PDF_CONTENT_TYPE,
+                            file.getSize()
+                    );
 
-        return toResponse(saved);
+            Resume saved =
+                    resumeRepository.save(resume);
+
+            return toResponse(saved);
+
+        } catch (RuntimeException exception) {
+
+            /*
+             * The filesystem write succeeded, but the DB
+             * operation failed.
+             *
+             * Because a DB transaction cannot automatically
+             * roll back a filesystem write, explicitly clean
+             * up the stored file.
+             */
+            try {
+
+                storageService.delete(
+                        storageKey
+                );
+
+            } catch (IOException cleanupException) {
+
+                exception.addSuppressed(
+                        cleanupException
+                );
+            }
+
+            throw exception;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -90,10 +132,14 @@ public class StudentResumeService {
             UserDetails userDetails
     ) {
 
-        User user = getCurrentUser(userDetails);
+        User user =
+                getCurrentUser(userDetails);
 
         Resume resume =
-                resumeRepository.findByStudent_User_Id(user.getId())
+                resumeRepository
+                        .findByStudent_User_Id(
+                                user.getId()
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Resume not found"
@@ -108,10 +154,14 @@ public class StudentResumeService {
             UserDetails userDetails
     ) throws IOException {
 
-        User user = getCurrentUser(userDetails);
+        User user =
+                getCurrentUser(userDetails);
 
         Resume resume =
-                resumeRepository.findByStudent_User_Id(user.getId())
+                resumeRepository
+                        .findByStudent_User_Id(
+                                user.getId()
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Resume not found"
@@ -123,7 +173,9 @@ public class StudentResumeService {
                         resume.getStorageKey()
                 );
 
-        return new ByteArrayResource(fileBytes);
+        return new ByteArrayResource(
+                fileBytes
+        );
     }
 
     @Transactional
@@ -131,16 +183,26 @@ public class StudentResumeService {
             UserDetails userDetails
     ) throws IOException {
 
-        User user = getCurrentUser(userDetails);
+        User user =
+                getCurrentUser(userDetails);
 
         Resume resume =
-                resumeRepository.findByStudent_User_Id(user.getId())
+                resumeRepository
+                        .findByStudent_User_Id(
+                                user.getId()
+                        )
                         .orElseThrow(() ->
                                 new ResourceNotFoundException(
                                         "Resume not found"
                                 )
                         );
 
+        /*
+         * Delete the physical file first.
+         *
+         * If filesystem deletion fails, the exception
+         * prevents the database transaction from completing.
+         */
         storageService.delete(
                 resume.getStorageKey()
         );
@@ -174,10 +236,55 @@ public class StudentResumeService {
             return "resume.pdf";
         }
 
-        return java.nio.file.Paths
-                .get(originalName)
-                .getFileName()
-                .toString();
+        /*
+         * Treat both Unix and Windows separators as path
+         * separators because the filename originates from
+         * an external client.
+         */
+        String normalizedName =
+                originalName
+                        .replace('\\', '/');
+
+        try {
+
+            String fileName =
+                    Paths.get(normalizedName)
+                            .getFileName()
+                            .toString()
+                            .trim();
+
+            /*
+             * Remove control characters from the display
+             * filename.
+             */
+            fileName =
+                    fileName.replaceAll(
+                            "[\\p{Cntrl}]",
+                            ""
+                    ).trim();
+
+            if (fileName.isBlank()) {
+                return "resume.pdf";
+            }
+
+            /*
+             * Database column allows 255 characters.
+             */
+            if (fileName.length() > 255) {
+
+                fileName =
+                        fileName.substring(
+                                0,
+                                255
+                        );
+            }
+
+            return fileName;
+
+        } catch (InvalidPathException exception) {
+
+            return "resume.pdf";
+        }
     }
 
     private ResumeResponse toResponse(

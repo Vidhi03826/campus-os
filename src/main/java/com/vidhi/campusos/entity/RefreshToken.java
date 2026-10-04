@@ -12,8 +12,24 @@ public class RefreshToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 500)
-    private String token;
+    /*
+     * IMPORTANT:
+     * The database column is still called "token" for now so that we
+     * don't create a schema migration in the middle of development.
+     *
+     * The value stored in this column is NO LONGER the raw token.
+     * It is the SHA-256 hash of the raw refresh token.
+     *
+     * Later, when we introduce Flyway, we can rename this column
+     * from "token" to "token_hash".
+     */
+    @Column(
+            name = "token",
+            nullable = false,
+            unique = true,
+            length = 64
+    )
+    private String tokenHash;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
@@ -32,12 +48,12 @@ public class RefreshToken {
         return id;
     }
 
-    public String getToken() {
-        return token;
+    public String getTokenHash() {
+        return tokenHash;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setTokenHash(String tokenHash) {
+        this.tokenHash = tokenHash;
     }
 
     public User getUser() {

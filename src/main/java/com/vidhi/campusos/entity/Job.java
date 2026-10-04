@@ -14,8 +14,8 @@ import java.time.Instant;
                         columnList = "company_id"
                 ),
                 @Index(
-                        name = "idx_jobs_status",
-                        columnList = "status"
+                        name = "idx_jobs_status_created_at",
+                        columnList = "status, created_at"
                 ),
                 @Index(
                         name = "idx_jobs_deadline",

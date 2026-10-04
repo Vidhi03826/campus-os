@@ -9,8 +9,8 @@ import java.time.Instant;
         name = "notifications",
         indexes = {
                 @Index(
-                        name = "idx_notifications_user",
-                        columnList = "user_id"
+                        name = "idx_notifications_user_created_at",
+                        columnList = "user_id, created_at"
                 ),
                 @Index(
                         name = "idx_notifications_user_read_created",

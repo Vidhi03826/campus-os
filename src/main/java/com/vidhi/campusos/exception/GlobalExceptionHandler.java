@@ -9,12 +9,15 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger logger =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     // =========================================================
     // DUPLICATE RESOURCE
@@ -209,12 +212,17 @@ public class GlobalExceptionHandler {
     // =========================================================
     // FALLBACK - UNEXPECTED ERROR
     // =========================================================
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception exception,
             HttpServletRequest request
     ) {
+
+        logger.error(
+                "Unhandled exception while processing {}",
+                request.getRequestURI(),
+                exception
+        );
 
         return build(
                 HttpStatus.INTERNAL_SERVER_ERROR,
