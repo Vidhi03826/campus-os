@@ -536,11 +536,10 @@ public class ApplicationService {
                 );
     }
 
-    private ApplicationResponse toResponse(
-            Application application
-    ) {
 
+    private ApplicationResponse toResponse(Application application) {
         Job job = application.getJob();
+        User studentUser = application.getStudent().getUser();
 
         return new ApplicationResponse(
                 application.getId(),
@@ -548,11 +547,14 @@ public class ApplicationService {
                 job.getTitle(),
                 job.getCompany().getId(),
                 job.getCompany().getName(),
+                studentUser.getName(),
+                studentUser.getEmail(),
                 application.getStatus(),
                 application.getAppliedAt(),
                 application.getUpdatedAt()
         );
     }
+
 
     private ApplicationStatusHistoryResponse
     toHistoryResponse(

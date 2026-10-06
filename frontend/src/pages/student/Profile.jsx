@@ -2,25 +2,28 @@ import { useEffect, useMemo, useState } from "react";
 import {
     ArrowRight,
     BriefcaseBusiness,
+    Check,
     CheckCircle2,
     FileText,
     Mail,
+    RefreshCw,
     ShieldCheck,
     UserRound,
 } from "lucide-react";
-
 import { Link } from "react-router-dom";
 
 import { getCurrentUser } from "../../api/authApi";
 import { getResumeMetadata } from "../../api/studentApi";
 
 function getInitials(name = "") {
-    return name
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase())
-        .join("");
+    return (
+        name
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase())
+            .join("") || "U"
+    );
 }
 
 function Profile() {
@@ -28,80 +31,108 @@ function Profile() {
     const [resume, setResume] = useState(null);
 
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        const loadProfile = async () => {
-            try {
+    const loadProfile = async (isRefresh = false) => {
+        try {
+            if (isRefresh) {
+                setRefreshing(true);
+            } else {
                 setLoading(true);
-                setError("");
-
-                const [userData, resumeData] =
-                    await Promise.allSettled([
-                        getCurrentUser(),
-                        getResumeMetadata(),
-                    ]);
-
-                if (
-                    userData.status === "fulfilled"
-                ) {
-                    setUser(userData.value);
-                }
-
-                if (
-                    resumeData.status === "fulfilled"
-                ) {
-                    setResume(resumeData.value);
-                }
-            } catch (err) {
-                console.error(
-                    "Failed to load profile:",
-                    err
-                );
-
-                setError(
-                    err.response?.data?.message ||
-                    "Unable to load your profile."
-                );
-            } finally {
-                setLoading(false);
             }
-        };
 
+            setError("");
+
+            const [userResult, resumeResult] =
+                await Promise.allSettled([
+                    getCurrentUser(),
+                    getResumeMetadata(),
+                ]);
+
+            if (userResult.status === "fulfilled") {
+                setUser(userResult.value);
+            }
+
+            if (resumeResult.status === "fulfilled") {
+                setResume(resumeResult.value);
+            } else {
+                setResume(null);
+            }
+
+            if (
+                userResult.status === "rejected" &&
+                resumeResult.status === "rejected"
+            ) {
+                throw userResult.reason;
+            }
+        } catch (err) {
+            console.error("Failed to load profile:", err);
+
+            setError(
+                err?.response?.data?.message ||
+                "Unable to load your profile right now."
+            );
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
         loadProfile();
     }, []);
 
-    const profileProgress = useMemo(() => {
+    const readiness = useMemo(() => {
         if (!user) {
-            return 0;
+            return {
+                percentage: 0,
+                completed: 0,
+                total: 3,
+            };
         }
 
-        /*
-         * Only count facts we can verify from the current
-         * backend responses.
-         */
         const checks = [
             Boolean(user.name),
             Boolean(user.email),
             Boolean(resume),
         ];
 
-        const completed =
-            checks.filter(Boolean).length;
+        const completed = checks.filter(Boolean).length;
 
-        return Math.round(
-            (completed / checks.length) * 100
-        );
+        return {
+            percentage: Math.round((completed / checks.length) * 100),
+            completed,
+            total: checks.length,
+        };
     }, [user, resume]);
+
+    const checklist = [
+        {
+            label: "Name added",
+            complete: Boolean(user?.name),
+        },
+        {
+            label: "Email verified",
+            complete: Boolean(user?.email),
+        },
+        {
+            label: "Resume uploaded",
+            complete: Boolean(resume),
+        },
+    ];
 
     if (loading) {
         return (
             <div className="profile-page">
+                <div className="profile-skeleton profile-skeleton-hero" />
 
-                <div className="profile-skeleton hero" />
+                <div className="profile-skeleton-grid">
+                    <div className="profile-skeleton profile-skeleton-card" />
+                    <div className="profile-skeleton profile-skeleton-card" />
+                </div>
 
-                <div className="profile-skeleton body" />
-
+                <div className="profile-skeleton profile-skeleton-bottom" />
             </div>
         );
     }
@@ -109,145 +140,181 @@ function Profile() {
     if (!user) {
         return (
             <div className="profile-error">
-                <h2>
-                    Profile unavailable
-                </h2>
+                <div className="profile-error-icon">
+                    <UserRound size={24} />
+                </div>
+
+                <span className="eyebrow">ACCOUNT</span>
+
+                <h2>Profile unavailable</h2>
 
                 <p>
                     {error ||
                         "We couldn't load your account information."}
                 </p>
+
+                <button
+                    className="primary-button"
+                    onClick={() => loadProfile(true)}
+                    disabled={refreshing}
+                >
+                    <RefreshCw
+                        size={15}
+                        className={refreshing ? "spin" : ""}
+                    />
+                    Try again
+                </button>
             </div>
         );
     }
 
     return (
         <div className="profile-page">
-
-            {/* ================================================= */}
             {/* HEADER */}
-            {/* ================================================= */}
-
             <section className="profile-hero">
-
                 <div className="profile-avatar-large">
                     {getInitials(user.name)}
                 </div>
 
                 <div className="profile-hero-content">
+                    <span className="eyebrow">CAREER PROFILE</span>
 
-                    <span className="eyebrow">
-                        CAREER PROFILE
-                    </span>
+                    <div className="profile-title-row">
+                        <h1>{user.name}</h1>
 
-                    <h1>
-                        {user.name}
-                    </h1>
+                        <span className="profile-role-pill">
+                            <ShieldCheck size={13} />
+                            {user.role}
+                        </span>
+                    </div>
 
                     <p>
-                        Your CampusOS identity and
-                        application-ready information.
+                        Your CampusOS identity and application-ready
+                        information.
                     </p>
 
                     <div className="profile-meta">
-
                         <span>
                             <Mail size={14} />
                             {user.email}
                         </span>
 
                         <span>
-                            <ShieldCheck size={14} />
-                            {user.role}
+                            <BriefcaseBusiness size={14} />
+                            Student workspace
                         </span>
-
                     </div>
-
                 </div>
 
-                <div className="profile-progress">
+                <div className="profile-hero-actions">
+                    <button
+                        className="icon-button"
+                        onClick={() => loadProfile(true)}
+                        disabled={refreshing}
+                        aria-label="Refresh profile"
+                        title="Refresh profile"
+                    >
+                        <RefreshCw
+                            size={17}
+                            className={refreshing ? "spin" : ""}
+                        />
+                    </button>
+                </div>
+            </section>
 
+            {/* ERROR */}
+            {error && (
+                <div className="profile-inline-error">
+                    <span>{error}</span>
+
+                    <button
+                        onClick={() => loadProfile(true)}
+                        disabled={refreshing}
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            {/* READINESS */}
+            <section className="profile-readiness-card">
+                <div className="profile-readiness-main">
                     <div
-                        className="profile-progress-ring"
+                        className="profile-progress-ring profile-progress-ring-large"
                         style={{
-                            "--progress":
-                                `${profileProgress * 3.6}deg`,
+                            "--progress": `${readiness.percentage * 3.6}deg`,
                         }}
                     >
                         <div>
-                            <strong>
-                                {profileProgress}%
-                            </strong>
-
-                            <span>
-                                ready
-                            </span>
+                            <strong>{readiness.percentage}%</strong>
+                            <span>ready</span>
                         </div>
                     </div>
 
-                    <div>
+                    <div className="profile-readiness-copy">
                         <span className="eyebrow">
                             PROFILE READINESS
                         </span>
 
-                        <strong>
-                            {profileProgress === 100
-                                ? "Application ready"
-                                : "Keep building"}
-                        </strong>
+                        <h2>
+                            {readiness.percentage === 100
+                                ? "You're application ready"
+                                : "Complete your candidate profile"}
+                        </h2>
+
+                        <p>
+                            {readiness.percentage === 100
+                                ? "Your essential CampusOS information is ready for applications."
+                                : `${readiness.completed} of ${readiness.total} essential profile items are complete.`}
+                        </p>
                     </div>
-
                 </div>
 
-            </section>
-
-            {/* ================================================= */}
-            {/* ERROR */}
-            {/* ================================================= */}
-
-            {error && (
-                <div className="profile-inline-error">
-                    {error}
-                </div>
-            )}
-
-            {/* ================================================= */}
-            {/* PROFILE SNAPSHOT */}
-            {/* ================================================= */}
-
-            <section className="profile-content-grid">
-
-                <div className="profile-surface">
-
-                    <div className="profile-section-heading">
-
-                        <div>
-                            <span className="eyebrow">
-                                ACCOUNT
+                <div className="profile-checklist">
+                    {checklist.map((item) => (
+                        <div
+                            className={`profile-check ${
+                                item.complete ? "complete" : ""
+                            }`}
+                            key={item.label}
+                        >
+                            <span>
+                                {item.complete ? (
+                                    <Check size={13} />
+                                ) : (
+                                    <span className="profile-check-empty" />
+                                )}
                             </span>
 
-                            <h2>
-                                Profile snapshot
-                            </h2>
+                            <strong>{item.label}</strong>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* SNAPSHOT */}
+            <section className="profile-content-grid">
+                <div className="profile-surface">
+                    <div className="profile-section-heading">
+                        <div>
+                            <span className="eyebrow">ACCOUNT</span>
+                            <h2>Profile snapshot</h2>
                         </div>
 
+                        <div className="profile-heading-icon">
+                            <UserRound size={18} />
+                        </div>
                     </div>
 
                     <div className="profile-detail-grid">
-
                         <div className="profile-detail">
                             <div className="profile-detail-icon">
                                 <UserRound size={17} />
                             </div>
 
                             <div>
-                                <span>
-                                    Full name
-                                </span>
-
-                                <strong>
-                                    {user.name}
-                                </strong>
+                                <span>Full name</span>
+                                <strong>{user.name}</strong>
                             </div>
                         </div>
 
@@ -257,13 +324,8 @@ function Profile() {
                             </div>
 
                             <div>
-                                <span>
-                                    Email address
-                                </span>
-
-                                <strong>
-                                    {user.email}
-                                </strong>
+                                <span>Email address</span>
+                                <strong>{user.email}</strong>
                             </div>
                         </div>
 
@@ -273,13 +335,8 @@ function Profile() {
                             </div>
 
                             <div>
-                                <span>
-                                    Account role
-                                </span>
-
-                                <strong>
-                                    {user.role}
-                                </strong>
+                                <span>Account role</span>
+                                <strong>{user.role}</strong>
                             </div>
                         </div>
 
@@ -289,56 +346,48 @@ function Profile() {
                             </div>
 
                             <div>
-                                <span>
-                                    Workspace
-                                </span>
-
-                                <strong>
-                                    Student
-                                </strong>
+                                <span>Workspace</span>
+                                <strong>Student</strong>
                             </div>
                         </div>
-
                     </div>
-
                 </div>
 
-                {/* Resume card */}
-
+                {/* RESUME */}
                 <div className="profile-surface">
-
                     <div className="profile-section-heading">
-
                         <div>
-                            <span className="eyebrow">
-                                DOCUMENT
-                            </span>
-
-                            <h2>
-                                Resume
-                            </h2>
+                            <span className="eyebrow">DOCUMENT</span>
+                            <h2>Resume</h2>
                         </div>
 
-                        <FileText size={20} />
-
+                        <div className="profile-heading-icon">
+                            <FileText size={18} />
+                        </div>
                     </div>
 
                     {resume ? (
                         <div className="profile-resume-ready">
-
                             <div className="profile-resume-status">
                                 <CheckCircle2 size={20} />
                             </div>
 
-                            <div>
-                                <strong>
-                                    Resume uploaded
-                                </strong>
+                            <div className="profile-resume-copy">
+                                <strong>Resume uploaded</strong>
 
                                 <p>
                                     {resume.fileName ||
                                         "Current resume"}
                                 </p>
+
+                                {resume.updatedAt && (
+                                    <span>
+                                        Updated{" "}
+                                        {new Date(
+                                            resume.updatedAt
+                                        ).toLocaleDateString("en-IN")}
+                                    </span>
+                                )}
                             </div>
 
                             <Link
@@ -348,22 +397,18 @@ function Profile() {
                                 Manage
                                 <ArrowRight size={14} />
                             </Link>
-
                         </div>
                     ) : (
                         <div className="profile-resume-empty">
-
                             <div className="profile-resume-empty-icon">
                                 <FileText size={21} />
                             </div>
 
-                            <h3>
-                                Your resume is missing
-                            </h3>
+                            <h3>Your resume is missing</h3>
 
                             <p>
-                                Upload one before applying
-                                to opportunities.
+                                Upload one before applying to
+                                opportunities.
                             </p>
 
                             <Link
@@ -373,49 +418,36 @@ function Profile() {
                                 Upload resume
                                 <ArrowRight size={15} />
                             </Link>
-
                         </div>
                     )}
-
                 </div>
-
             </section>
 
-            {/* ================================================= */}
-            {/* CAREER WORKSPACE */}
-            {/* ================================================= */}
-
+            {/* NEXT STEPS */}
             <section className="profile-next-section">
+                <div className="profile-next-copy">
+                    <span className="eyebrow">NEXT STEPS</span>
 
-                <div>
-                    <span className="eyebrow">
-                        NEXT STEPS
-                    </span>
-
-                    <h2>
-                        Build a stronger candidate profile
-                    </h2>
+                    <h2>Build a stronger candidate profile</h2>
 
                     <p>
-                        CampusOS will use your profile,
-                        skills and resume to power the rest
-                        of your career workspace.
+                        Keep your resume current and continue
+                        exploring opportunities that match your
+                        goals.
                     </p>
                 </div>
 
                 <div className="profile-next-cards">
-
                     <Link
                         to="/student/resume"
                         className="profile-next-card"
                     >
-                        <FileText size={20} />
+                        <div className="profile-next-card-icon">
+                            <FileText size={19} />
+                        </div>
 
                         <div>
-                            <strong>
-                                Resume
-                            </strong>
-
+                            <strong>Resume</strong>
                             <span>
                                 Keep your latest version ready.
                             </span>
@@ -428,13 +460,12 @@ function Profile() {
                         to="/student/jobs"
                         className="profile-next-card"
                     >
-                        <BriefcaseBusiness size={20} />
+                        <div className="profile-next-card-icon">
+                            <BriefcaseBusiness size={19} />
+                        </div>
 
                         <div>
-                            <strong>
-                                Discover opportunities
-                            </strong>
-
+                            <strong>Discover opportunities</strong>
                             <span>
                                 Find roles that match your goals.
                             </span>
@@ -442,11 +473,8 @@ function Profile() {
 
                         <ArrowRight size={16} />
                     </Link>
-
                 </div>
-
             </section>
-
         </div>
     );
 }

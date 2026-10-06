@@ -1,3 +1,4 @@
+
 package com.vidhi.campusos.dto;
 
 import com.vidhi.campusos.entity.ApplicationStatus;
@@ -10,6 +11,8 @@ public record ApplicationResponse(
         String jobTitle,
         Long companyId,
         String companyName,
+        String studentName,
+        String studentEmail,
         ApplicationStatus status,
         Instant appliedAt,
         Instant updatedAt

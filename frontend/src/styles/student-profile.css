@@ -128,17 +128,9 @@
 .profile-progress-ring {
     width: 72px;
     height: 72px;
-
     display: grid;
     place-items: center;
-
     border-radius: 50%;
-
-    background:
-            conic-gradient(
-                    #536dfe var(--progress),
-                    #e8ebf2 var(--progress)
-            );
 }
 
 .profile-progress-ring > div {
@@ -984,5 +976,500 @@
 
     .resume-replace-section .secondary-button {
         width: 100%;
+    }
+}
+/* =========================================================
+   PROFILE + RESUME — FINAL POLISH
+   ========================================================= */
+
+/* ---------- PROFILE ---------- */
+
+.profile-title-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.profile-role-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border: 1px solid #dfe4f4;
+    border-radius: 999px;
+    color: #5365c9;
+    background: #f5f7ff;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.profile-hero-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.profile-heading-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #596bd2;
+    background: #eef1ff;
+}
+
+.profile-readiness-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 24px;
+    border: 1px solid #e1e6f2;
+    border-radius: 17px;
+    background:
+            radial-gradient(
+                    circle at 10% 0%,
+                    rgba(83, 109, 254, 0.07),
+                    transparent 28%
+            ),
+            linear-gradient(135deg, #ffffff, #f8f9ff);
+}
+
+.profile-readiness-main {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 17px;
+}
+
+.profile-progress-ring-large {
+    width: 82px;
+    height: 82px;
+    flex: 0 0 82px;
+}
+
+.profile-progress-ring-large > div {
+    width: 65px;
+    height: 65px;
+}
+
+.profile-progress-ring-large strong {
+    font-size: 17px;
+}
+
+.profile-readiness-copy {
+    min-width: 0;
+}
+
+.profile-readiness-copy h2 {
+    margin: 6px 0;
+    color: #172033;
+    font-size: 17px;
+    letter-spacing: -0.025em;
+}
+
+.profile-readiness-copy p {
+    margin: 0;
+    color: #8791a2;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.profile-checklist {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 7px;
+}
+
+.profile-check {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border: 1px solid #e8ebf0;
+    border-radius: 9px;
+    color: #8992a2;
+    background: #ffffff;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.profile-check > span:first-child {
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #9ba3b2;
+    background: #f0f2f5;
+}
+
+.profile-check.complete {
+    border-color: #d9eee5;
+    color: #4c806d;
+    background: #f8fcfa;
+}
+
+.profile-check.complete > span:first-child {
+    color: #ffffff;
+    background: #3eaf83;
+}
+
+.profile-check-empty {
+    width: 7px;
+    height: 7px;
+    display: block;
+    border: 1.5px solid #adb5c2;
+    border-radius: 50%;
+    background: transparent;
+}
+
+.profile-resume-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.profile-resume-copy > span {
+    color: #98a2b3;
+    font-size: 9px;
+}
+
+.profile-next-copy {
+    min-width: 0;
+}
+
+.profile-next-card-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    color: #596bd3;
+    background: #eef1ff;
+}
+
+.profile-error-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 12px;
+    border-radius: 15px;
+    color: #667085;
+    background: #f2f4f7;
+}
+
+.profile-error h2 {
+    margin: 0;
+    font-size: 19px;
+    letter-spacing: -0.025em;
+}
+
+.profile-error p {
+    max-width: 400px;
+    margin: 8px auto 18px;
+    line-height: 1.6;
+}
+
+.profile-inline-error {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.profile-inline-error button {
+    margin-left: auto;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 7px;
+    color: #b42318;
+    background: transparent;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.profile-inline-error button:hover {
+    background: #fff0ee;
+}
+
+.profile-skeleton-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+    gap: 17px;
+}
+
+.profile-skeleton-hero {
+    height: 180px;
+}
+
+.profile-skeleton-card {
+    height: 300px;
+}
+
+.profile-skeleton-bottom {
+    height: 180px;
+}
+
+/* ---------- RESUME ---------- */
+
+.resume-file-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.resume-pdf-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 5px;
+    color: #b42318;
+    background: #fff0ee;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.resume-secure-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.resume-replace-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    border-radius: 11px;
+    color: #596bd2;
+    background: #eef1ff;
+}
+
+.resume-replace-section {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+}
+
+.resume-dropzone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 16px;
+    padding: 5px 8px;
+    border: 1px solid #e0e5ef;
+    border-radius: 6px;
+    color: #69758b;
+    background: #ffffff;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.resume-checklist-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.resume-checklist-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    border-radius: 11px;
+    color: #5268d4;
+    background: #eef1ff;
+}
+
+.resume-check-item section {
+    min-width: 0;
+}
+
+.resume-content-skeleton-small {
+    height: 190px;
+}
+
+/* ---------- BUTTON / INTERACTION POLISH ---------- */
+
+.profile-hero-actions .icon-button,
+.resume-alert button {
+    transition:
+            background 150ms ease,
+            border-color 150ms ease,
+            transform 150ms ease;
+}
+
+.profile-hero-actions .icon-button:hover {
+    transform: translateY(-1px);
+}
+
+.profile-next-card {
+    transition:
+            transform 150ms ease,
+            border-color 150ms ease,
+            box-shadow 150ms ease;
+}
+
+.profile-next-card:hover {
+    transform: translateY(-1px);
+    border-color: #cfd7ee;
+    box-shadow: 0 8px 22px rgba(40, 52, 95, 0.06);
+}
+
+.resume-file-card,
+.resume-replace-section,
+.resume-checklist,
+.profile-surface,
+.profile-readiness-card,
+.profile-hero,
+.profile-next-section {
+    transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease;
+}
+
+/* ---------- RESPONSIVE ADDITIONS ---------- */
+
+@media (max-width: 900px) {
+    .profile-readiness-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .profile-checklist {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .profile-skeleton-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resume-replace-section {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .resume-replace-section > button {
+        grid-column: 1 / -1;
+        justify-self: flex-start;
+        margin-left: 54px;
+    }
+}
+
+@media (max-width: 650px) {
+    .profile-readiness-main {
+        align-items: flex-start;
+    }
+
+    .profile-progress-ring-large {
+        width: 68px;
+        height: 68px;
+        flex-basis: 68px;
+    }
+
+    .profile-progress-ring-large > div {
+        width: 54px;
+        height: 54px;
+    }
+
+    .profile-checklist {
+        flex-direction: column;
+    }
+
+    .profile-check {
+        width: 100%;
+    }
+
+    .profile-hero-actions {
+        justify-content: flex-start;
+    }
+
+    .resume-replace-section {
+        display: flex;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .resume-replace-section > button {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .resume-replace-icon {
+        margin-bottom: -2px;
+    }
+
+    .resume-file-card {
+        padding: 18px;
+    }
+
+    .resume-dropzone {
+        min-height: 330px;
+        padding: 25px 18px;
+    }
+
+    .profile-inline-error {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 420px) {
+    .profile-readiness-card {
+        padding: 18px;
+    }
+
+    .profile-readiness-main {
+        gap: 11px;
+    }
+
+    .profile-readiness-copy h2 {
+        font-size: 15px;
+    }
+
+    .profile-surface {
+        padding: 18px;
+    }
+
+    .resume-file-info h2 {
+        max-width: 100%;
+        font-size: 13px;
+    }
+
+    .resume-checklist {
+        padding: 18px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-next-card,
+    .profile-hero-actions .icon-button,
+    .resume-file-card,
+    .resume-replace-section,
+    .resume-checklist,
+    .profile-surface,
+    .profile-readiness-card,
+    .profile-hero,
+    .profile-next-section {
+        transition: none;
+    }
+
+    .profile-skeleton,
+    .resume-header-skeleton,
+    .resume-content-skeleton {
+        animation: none;
     }
 }

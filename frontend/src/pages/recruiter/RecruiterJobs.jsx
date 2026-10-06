@@ -7,7 +7,7 @@ import {
     closeJob,
 } from "../../api/recruiterApi";
 import "../../styles/recruiter.css";
-
+import { useToast } from "../../context/ToastContext";
 const statusClass = (status) =>
     `recruiter-status recruiter-status--${String(status || "unknown").toLowerCase()}`;
 
@@ -46,7 +46,7 @@ export default function RecruiterJobs() {
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [busyJobId, setBusyJobId] = useState(null);
     const [notice, setNotice] = useState("");
-
+    const { success: showSuccess, error: showError } = useToast();
     const loadJobs = useCallback(async () => {
         setLoading(true);
         setError("");
@@ -119,18 +119,28 @@ export default function RecruiterJobs() {
                 await closeJob(job.id);
             }
 
-            setNotice(
+            const message =
                 action === "publish"
                     ? "Job published successfully."
-                    : "Job closed successfully."
+                    : "Job closed successfully.";
+
+            setNotice(message);
+
+            showSuccess(
+                message,
+                action === "publish"
+                    ? "Job published"
+                    : "Job closed"
             );
 
             await loadJobs();
         } catch (err) {
-            setError(
-                err.response?.data?.message ||
-                `Unable to ${actionLabel} this job. Check its status and try again.`
-            );
+            const message =
+                err?.response?.data?.message ||
+                `Unable to ${actionLabel} this job. Check its status and try again.`;
+
+            setError(message);
+            showError(message);
         } finally {
             setBusyJobId(null);
         }

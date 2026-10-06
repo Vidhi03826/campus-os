@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     ArrowLeft,
     Bookmark,
     BriefcaseBusiness,
     Building2,
     CalendarDays,
+    Check,
     CheckCircle2,
     Clock3,
+    ExternalLink,
     MapPin,
     Share2,
+    Sparkles,
     X,
 } from "lucide-react";
-
 import {
     Link,
     useNavigate,
@@ -25,13 +27,15 @@ import {
 } from "../../api/studentApi";
 
 import { applyToJob } from "../../api/applicationApi";
+import { useToast } from "../../context/ToastContext";
+import "../../styles/student-job-details.css";
 
 function formatEnum(value) {
     if (!value) {
         return "Not specified";
     }
 
-    return value
+    return String(value)
         .toLowerCase()
         .replaceAll("_", " ")
         .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -43,25 +47,214 @@ function formatSalary(min, max) {
     }
 
     const format = (value) => {
+        if (value >= 10000000) {
+            return `₹${(value / 10000000).toFixed(1)}Cr`;
+        }
+
         if (value >= 100000) {
             return `₹${(value / 100000).toFixed(1)}L`;
         }
 
-        return `₹${Math.round(value / 1000)}K`;
+        if (value >= 1000) {
+            return `₹${Math.round(value / 1000)}K`;
+        }
+
+        return `₹${value}`;
     };
 
     if (min != null && max != null) {
         return `${format(min)} – ${format(max)}`;
     }
 
-    return min != null
-        ? `From ${format(min)}`
-        : `Up to ${format(max)}`;
+    if (min != null) {
+        return `From ${format(min)}`;
+    }
+
+    return `Up to ${format(max)}`;
+}
+
+function formatDate(value) {
+    if (!value) {
+        return "Not specified";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Not specified";
+    }
+
+    return date.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    });
+}
+
+function formatRelativeDate(value) {
+    if (!value) {
+        return "Recently posted";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "Recently posted";
+    }
+
+    const diff = Date.now() - date.getTime();
+    const day = 24 * 60 * 60 * 1000;
+
+    if (diff < day) {
+        return "Posted today";
+    }
+
+    if (diff < 2 * day) {
+        return "Posted yesterday";
+    }
+
+    if (diff < 7 * day) {
+        return `Posted ${Math.floor(diff / day)} days ago`;
+    }
+
+    return `Posted on ${formatDate(value)}`;
+}
+
+function getCompanyName(job) {
+    return (
+        job.companyName ||
+        job.company?.name ||
+        "Company"
+    );
+}
+
+function getCompanyInitials(name) {
+    if (!name) {
+        return "C";
+    }
+
+    return name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word.charAt(0).toUpperCase())
+        .join("");
+}
+
+function normalizeList(value) {
+    if (Array.isArray(value)) {
+        return value.filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+        return value
+            .split(/\r?\n|•|;/)
+            .map((item) => item.trim())
+            .filter(Boolean);
+    }
+
+    return [];
+}
+
+function getJobSkills(job) {
+    return normalizeList(
+        job.skills ||
+        job.requiredSkills ||
+        job.skillSet ||
+        job.technologies
+    );
+}
+
+function getResponsibilities(job) {
+    return normalizeList(
+        job.responsibilities ||
+        job.responsibility
+    );
+}
+
+function getRequirements(job) {
+    return normalizeList(
+        job.requirements ||
+        job.qualifications ||
+        job.eligibility
+    );
+}
+
+function getExperienceText(job) {
+    const min = job.experienceMin;
+    const max = job.experienceMax;
+
+    if (min == null && max == null) {
+        return "Not specified";
+    }
+
+    if (min != null && max != null) {
+        if (min === max) {
+            return `${min} years`;
+        }
+
+        return `${min} – ${max} years`;
+    }
+
+    if (min != null) {
+        return `${min}+ years`;
+    }
+
+    return `Up to ${max} years`;
+}
+
+function DetailSkeleton() {
+    return (
+        <div className="job-details-shell">
+            <div className="job-details-loading">
+                <div className="jd-skeleton-back" />
+
+                <div className="jd-skeleton-hero">
+                    <div className="jd-skeleton-avatar" />
+
+                    <div className="jd-skeleton-heading">
+                        <div className="jd-skeleton-line tiny" />
+                        <div className="jd-skeleton-line large" />
+                        <div className="jd-skeleton-line medium" />
+                    </div>
+
+                    <div className="jd-skeleton-actions">
+                        <div />
+                        <div />
+                    </div>
+                </div>
+
+                <div className="jd-skeleton-layout">
+                    <div className="jd-skeleton-main">
+                        <div className="jd-skeleton-info-grid">
+                            {Array.from({
+                                length: 4,
+                            }).map((_, index) => (
+                                <div key={index} />
+                            ))}
+                        </div>
+
+                        <div className="jd-skeleton-content">
+                            <div className="jd-skeleton-line medium" />
+                            <div className="jd-skeleton-line full" />
+                            <div className="jd-skeleton-line full" />
+                            <div className="jd-skeleton-line long" />
+                            <div className="jd-skeleton-line full" />
+                        </div>
+                    </div>
+
+                    <div className="jd-skeleton-side" />
+                </div>
+            </div>
+        </div>
+    );
 }
 
 function JobDetails() {
     const { jobId } = useParams();
     const navigate = useNavigate();
+
+    const { success, error: showError, info } = useToast();
 
     const [job, setJob] = useState(null);
 
@@ -75,14 +268,27 @@ function JobDetails() {
         useState(false);
 
     const [applying, setApplying] = useState(false);
-
     const [applicationSuccess, setApplicationSuccess] =
         useState(false);
 
-    const [actionMessage, setActionMessage] =
-        useState("");
+    const companyName = useMemo(
+        () => getJobSkills(job || {}),
+        [job]
+    );
+
+    const responsibilities = useMemo(
+        () => getResponsibilities(job || {}),
+        [job]
+    );
+
+    const requirements = useMemo(
+        () => getRequirements(job || {}),
+        [job]
+    );
 
     useEffect(() => {
+        let active = true;
+
         const loadJob = async () => {
             try {
                 setLoading(true);
@@ -90,14 +296,24 @@ function JobDetails() {
 
                 const data = await getJobById(jobId);
 
+                if (!active) {
+                    return;
+                }
+
                 setJob(data);
 
                 setSaved(
-                    data.saved ??
-                    data.isSaved ??
-                    false
+                    Boolean(
+                        data?.saved ??
+                        data?.isSaved ??
+                        false
+                    )
                 );
             } catch (err) {
+                if (!active) {
+                    return;
+                }
+
                 console.error(
                     "GET /api/jobs/{jobId} failed:",
                     err
@@ -108,12 +324,20 @@ function JobDetails() {
                     "Unable to load this opportunity."
                 );
             } finally {
-                setLoading(false);
+                if (active) {
+                    setLoading(false);
+                }
             }
         };
 
         loadJob();
+
+        return () => {
+            active = false;
+        };
     }, [jobId]);
+
+
 
     const handleSave = async () => {
         if (!job || saving) {
@@ -122,16 +346,17 @@ function JobDetails() {
 
         try {
             setSaving(true);
-            setActionMessage("");
 
             if (saved) {
                 await unsaveJob(job.id);
+
                 setSaved(false);
-                setActionMessage("Job removed from saved jobs.");
+                success("Removed from your saved jobs.", "Job unsaved");;
             } else {
                 await saveJob(job.id);
+
                 setSaved(true);
-                setActionMessage("Job saved successfully.");
+                success("Added to your saved jobs.", "Job saved");
             }
         } catch (err) {
             console.error(
@@ -139,7 +364,7 @@ function JobDetails() {
                 err
             );
 
-            setActionMessage(
+            showError(
                 err.response?.data?.message ||
                 "Unable to update saved job."
             );
@@ -150,17 +375,30 @@ function JobDetails() {
 
     const handleShare = async () => {
         try {
+            if (
+                navigator.share &&
+                job?.title
+            ) {
+                await navigator.share({
+                    title: job.title,
+                    text: `Check out this opportunity at ${companyName}.`,
+                    url: window.location.href,
+                });
+
+                return;
+            }
+
             await navigator.clipboard.writeText(
                 window.location.href
             );
 
-            setActionMessage(
-                "Job link copied to clipboard."
-            );
-        } catch {
-            setActionMessage(
-                "Unable to copy the job link."
-            );
+            success("Job link copied to clipboard.", "Link copied");
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return;
+            }
+
+            showError("Unable to share this opportunity.");
         }
     };
 
@@ -174,8 +412,10 @@ function JobDetails() {
 
             await applyToJob(job.id);
 
-            setShowApplyModal(false);
-            setApplicationSuccess(true);
+            success(
+                "Your application has been submitted successfully.",
+                "Application submitted"
+            );
         } catch (err) {
             console.error(
                 "Application failed:",
@@ -184,173 +424,224 @@ function JobDetails() {
 
             setShowApplyModal(false);
 
-            setActionMessage(
+            const message =
                 err.response?.data?.message ||
-                "Unable to submit your application."
-            );
+                "Unable to submit your application.";
+
+            if (
+                message.toLowerCase().includes("already") ||
+                message.toLowerCase().includes("applied")
+            ) {
+                info(message, "Already applied");
+            } else {
+                showError(message);
+            }
         } finally {
             setApplying(false);
         }
     };
 
     if (loading) {
-        return (
-            <div className="job-details-loading">
-                <div className="job-details-skeleton hero" />
-                <div className="job-details-skeleton body" />
-            </div>
-        );
+        return <DetailSkeleton />;
     }
 
     if (error || !job) {
         return (
-            <div className="job-details-error">
-                <div className="jobs-empty-icon">
-                    <BriefcaseBusiness size={25} />
+            <div className="job-details-shell">
+                <div className="job-details-error">
+                    <div className="jd-error-icon">
+                        <BriefcaseBusiness size={25} />
+                    </div>
+
+                    <span className="jd-eyebrow">
+                        OPPORTUNITY UNAVAILABLE
+                    </span>
+
+                    <h2>
+                        We couldn't load this role
+                    </h2>
+
+                    <p>
+                        {error ||
+                            "This opportunity could not be found or is no longer available."}
+                    </p>
+
+                    <div className="jd-error-actions">
+                        <button
+                            type="button"
+                            className="jd-primary-button"
+                            onClick={() =>
+                                navigate("/student/jobs")
+                            }
+                        >
+                            <ArrowLeft size={16} />
+                            Back to opportunities
+                        </button>
+
+                        <button
+                            type="button"
+                            className="jd-secondary-button"
+                            onClick={() =>
+                                window.location.reload()
+                            }
+                        >
+                            Try again
+                        </button>
+                    </div>
                 </div>
-
-                <h2>
-                    Opportunity unavailable
-                </h2>
-
-                <p>
-                    {error ||
-                        "This job could not be found."}
-                </p>
-
-                <Link
-                    to="/student/jobs"
-                    className="primary-button"
-                >
-                    Back to jobs
-                </Link>
             </div>
         );
     }
 
-    const companyName =
-        job.companyName ||
-        job.company?.name ||
-        "Company";
+    const postedDate =
+        job.createdAt ||
+        job.postedAt ||
+        job.createdDate;
+
+    const deadline =
+        job.applicationDeadline ||
+        job.deadline ||
+        job.lastDateToApply;
+
+    const isExpired =
+        deadline &&
+        new Date(deadline).getTime() <
+        Date.now();
 
     return (
-        <>
+        <div className="job-details-shell">
             <div className="job-details-page">
+                {/* =================================================
+                    BACK
+                   ================================================= */}
 
                 <button
-                    className="back-link"
+                    type="button"
+                    className="jd-back-button"
                     onClick={() => navigate(-1)}
                 >
                     <ArrowLeft size={16} />
                     Back to opportunities
                 </button>
 
-                <section className="job-details-header">
+                {/* =================================================
+                    HERO
+                   ================================================= */}
 
-                    <div className="job-details-company-logo">
-                        {companyName
-                            .charAt(0)
-                            .toUpperCase()}
+                <section className="jd-hero">
+                    <div className="jd-company-avatar">
+                        {getCompanyInitials(companyName)}
                     </div>
 
-                    <div className="job-details-heading">
-
-                        <span className="eyebrow">
+                    <div className="jd-hero-content">
+                        <div className="jd-company-label">
                             {companyName}
-                        </span>
+                        </div>
 
-                        <h1>
-                            {job.title}
-                        </h1>
+                        <h1>{job.title}</h1>
 
-                        <div className="job-details-meta">
-
-                            <span>
-                                <Building2 size={15} />
-                                {companyName}
-                            </span>
-
+                        <div className="jd-hero-meta">
                             <span>
                                 <MapPin size={15} />
-                                {job.location || "Remote"}
+                                {job.location ||
+                                    "Remote"}
                             </span>
 
                             <span>
-                                <BriefcaseBusiness size={15} />
-                                {formatEnum(job.jobType)}
+                                <BriefcaseBusiness
+                                    size={15}
+                                />
+                                {formatEnum(
+                                    job.jobType
+                                )}
                             </span>
 
                             <span>
                                 <Clock3 size={15} />
-                                {formatEnum(job.workMode)}
+                                {formatEnum(
+                                    job.workMode
+                                )}
                             </span>
 
+                            <span>
+                                <CalendarDays size={15} />
+                                {formatRelativeDate(
+                                    postedDate
+                                )}
+                            </span>
                         </div>
                     </div>
 
-                    <div className="job-details-actions">
-
+                    <div className="jd-hero-actions">
                         <button
-                            className={`outline-action ${
-                                saved ? "saved" : ""
+                            type="button"
+                            className={`jd-icon-action ${
+                                saved
+                                    ? "is-saved"
+                                    : ""
                             }`}
                             onClick={handleSave}
                             disabled={saving}
+                            title={
+                                saved
+                                    ? "Remove from saved"
+                                    : "Save opportunity"
+                            }
+                            aria-label={
+                                saved
+                                    ? "Remove from saved"
+                                    : "Save opportunity"
+                            }
                         >
                             <Bookmark
-                                size={17}
+                                size={18}
                                 fill={
                                     saved
                                         ? "currentColor"
                                         : "none"
                                 }
                             />
-
-                            {saving
-                                ? "Saving..."
-                                : saved
-                                    ? "Saved"
-                                    : "Save"}
                         </button>
 
                         <button
-                            className="outline-action"
+                            type="button"
+                            className="jd-icon-action"
                             onClick={handleShare}
+                            title="Share opportunity"
+                            aria-label="Share opportunity"
                         >
-                            <Share2 size={17} />
-                            Share
+                            <Share2 size={18} />
                         </button>
 
                         <button
-                            className="primary-button job-apply-button"
+                            type="button"
+                            className="jd-hero-apply"
                             onClick={() =>
                                 setShowApplyModal(true)
                             }
+                            disabled={Boolean(
+                                isExpired
+                            )}
                         >
-                            Apply now
+                            {isExpired
+                                ? "Applications closed"
+                                : "Apply now"}
                         </button>
-
                     </div>
                 </section>
 
-                {actionMessage && (
-                    <div className="action-toast">
-                        <CheckCircle2 size={16} />
-                        <span>{actionMessage}</span>
-                    </div>
-                )}
 
-                <div className="job-details-layout">
+                {/* =================================================
+                    MAIN LAYOUT
+                   ================================================= */}
 
-                    <main className="job-details-main">
+                <div className="jd-layout">
+                    <main className="jd-main">
+                        {/* KEY FACTS */}
 
-                        <section className="job-info-grid">
-
-                            <div className="job-info-box">
-                                <span>
-                                    Salary
-                                </span>
-
+                        <section className="jd-facts">
+                            <div className="jd-fact">
+                                <span>Salary</span>
                                 <strong>
                                     {formatSalary(
                                         job.salaryMin,
@@ -359,125 +650,363 @@ function JobDetails() {
                                 </strong>
                             </div>
 
-                            <div className="job-info-box">
-                                <span>
-                                    Experience
-                                </span>
-
+                            <div className="jd-fact">
+                                <span>Experience</span>
                                 <strong>
-                                    {job.experienceMin}
-                                    {" – "}
-                                    {job.experienceMax}
-                                    {" years"}
+                                    {getExperienceText(
+                                        job
+                                    )}
                                 </strong>
                             </div>
 
-                            <div className="job-info-box">
-                                <span>
-                                    Work mode
-                                </span>
-
+                            <div className="jd-fact">
+                                <span>Work mode</span>
                                 <strong>
-                                    {formatEnum(job.workMode)}
+                                    {formatEnum(
+                                        job.workMode
+                                    )}
                                 </strong>
                             </div>
 
-                            <div className="job-info-box">
-                                <span>
-                                    Deadline
-                                </span>
-
-                                <strong>
-                                    <CalendarDays size={14} />
-
-                                    {job.applicationDeadline
-                                        ? new Date(
-                                            job.applicationDeadline
-                                        ).toLocaleDateString(
-                                            "en-IN"
+                            <div className="jd-fact">
+                                <span>Application deadline</span>
+                                <strong
+                                    className={
+                                        isExpired
+                                            ? "expired"
+                                            : ""
+                                    }
+                                >
+                                    {deadline
+                                        ? formatDate(
+                                            deadline
                                         )
                                         : "Not specified"}
                                 </strong>
                             </div>
-
                         </section>
 
-                        <section className="details-surface">
+                        {/* ABOUT */}
 
-                            <div className="details-section">
-
-                                <span className="eyebrow">
+                        <section className="jd-section">
+                            <div className="jd-section-heading">
+                                <span className="jd-eyebrow">
                                     ROLE OVERVIEW
                                 </span>
 
                                 <h2>
-                                    About this opportunity
+                                    About the opportunity
                                 </h2>
-
-                                <p className="job-description">
-                                    {job.description ||
-                                        "No description provided."}
-                                </p>
-
                             </div>
 
+                            <div className="jd-description">
+                                {job.description ? (
+                                    String(
+                                        job.description
+                                    )
+                                        .split(/\n+/)
+                                        .map(
+                                            (
+                                                paragraph,
+                                                index
+                                            ) => (
+                                                <p
+                                                    key={
+                                                        index
+                                                    }
+                                                >
+                                                    {
+                                                        paragraph
+                                                    }
+                                                </p>
+                                            )
+                                        )
+                                ) : (
+                                    <p className="jd-muted">
+                                        No detailed
+                                        description has
+                                        been provided for
+                                        this opportunity.
+                                    </p>
+                                )}
+                            </div>
                         </section>
 
-                    </main>
+                        {/* RESPONSIBILITIES */}
 
-                    <aside className="job-details-side">
-
-                        <div className="details-surface">
-
-                            <div className="side-heading">
-
-                                <CalendarDays size={18} />
-
-                                <div>
-                                    <span className="eyebrow">
-                                        APPLICATION
+                        {responsibilities.length > 0 && (
+                            <section className="jd-section">
+                                <div className="jd-section-heading">
+                                    <span className="jd-eyebrow">
+                                        WHAT YOU'LL DO
                                     </span>
 
-                                    <h3>
-                                        Ready to apply?
-                                    </h3>
+                                    <h2>
+                                        Responsibilities
+                                    </h2>
                                 </div>
 
+                                <ul className="jd-bullet-list">
+                                    {responsibilities.map(
+                                        (
+                                            item,
+                                            index
+                                        ) => (
+                                            <li
+                                                key={
+                                                    `${item}-${index}`
+                                                }
+                                            >
+                                                <span>
+                                                    <Check
+                                                        size={
+                                                            13
+                                                        }
+                                                    />
+                                                </span>
+
+                                                <p>
+                                                    {item}
+                                                </p>
+                                            </li>
+                                        )
+                                    )}
+                                </ul>
+                            </section>
+                        )}
+
+                        {/* REQUIREMENTS */}
+
+                        {requirements.length > 0 && (
+                            <section className="jd-section">
+                                <div className="jd-section-heading">
+                                    <span className="jd-eyebrow">
+                                        WHAT WE'RE LOOKING FOR
+                                    </span>
+
+                                    <h2>
+                                        Requirements
+                                    </h2>
+                                </div>
+
+                                <ul className="jd-bullet-list">
+                                    {requirements.map(
+                                        (
+                                            item,
+                                            index
+                                        ) => (
+                                            <li
+                                                key={
+                                                    `${item}-${index}`
+                                                }
+                                            >
+                                                <span>
+                                                    <Check
+                                                        size={
+                                                            13
+                                                        }
+                                                    />
+                                                </span>
+
+                                                <p>
+                                                    {item}
+                                                </p>
+                                            </li>
+                                        )
+                                    )}
+                                </ul>
+                            </section>
+                        )}
+
+                        {/* SKILLS */}
+
+                        {skills.length > 0 && (
+                            <section className="jd-section">
+                                <div className="jd-section-heading">
+                                    <span className="jd-eyebrow">
+                                        SKILLS & TECHNOLOGIES
+                                    </span>
+
+                                    <h2>
+                                        What you'll work with
+                                    </h2>
+                                </div>
+
+                                <div className="jd-skills">
+                                    {skills.map(
+                                        (
+                                            skill,
+                                            index
+                                        ) => (
+                                            <span
+                                                key={`${skill}-${index}`}
+                                            >
+                                                {skill}
+                                            </span>
+                                        )
+                                    )}
+                                </div>
+                            </section>
+                        )}
+                    </main>
+
+                    {/* =================================================
+                        SIDEBAR
+                       ================================================= */}
+
+                    <aside className="jd-sidebar">
+                        <section className="jd-apply-card">
+                            <div className="jd-apply-card-icon">
+                                <Sparkles size={19} />
                             </div>
 
-                            <p className="side-copy">
-                                Review the opportunity and submit
-                                your application when you're ready.
+                            <span className="jd-eyebrow">
+                                YOUR NEXT MOVE
+                            </span>
+
+                            <h3>
+                                Ready to take the shot?
+                            </h3>
+
+                            <p>
+                                Your profile and current
+                                resume will be available
+                                to the recruiter when you
+                                apply.
                             </p>
 
-                            <div className="application-check">
-                                <CheckCircle2 size={16} />
-                                Profile can be reviewed by recruiters
-                            </div>
-
-                            <div className="application-check">
-                                <CheckCircle2 size={16} />
-                                Your current resume will be used
-                            </div>
-
                             <button
-                                className="primary-button full-width"
+                                type="button"
+                                className="jd-sidebar-apply"
                                 onClick={() =>
-                                    setShowApplyModal(true)
+                                    setShowApplyModal(
+                                        true
+                                    )
                                 }
+                                disabled={Boolean(
+                                    isExpired
+                                )}
                             >
-                                Apply to this role
+                                {isExpired
+                                    ? "Applications closed"
+                                    : "Apply to this role"}
                             </button>
 
-                        </div>
+                            <div className="jd-trust-item">
+                                <CheckCircle2 size={15} />
+                                <span>
+                                    Profile can be reviewed
+                                    by recruiters
+                                </span>
+                            </div>
 
+                            <div className="jd-trust-item">
+                                <CheckCircle2 size={15} />
+                                <span>
+                                    Your current resume will
+                                    be used
+                                </span>
+                            </div>
+                        </section>
+
+                        <section className="jd-company-card">
+                            <div className="jd-company-card-avatar">
+                                {getCompanyInitials(
+                                    companyName
+                                )}
+                            </div>
+
+                            <div>
+                                <span className="jd-eyebrow">
+                                    COMPANY
+                                </span>
+
+                                <h3>{companyName}</h3>
+                            </div>
+
+                            {job.company?.description && (
+                                <p>
+                                    {
+                                        job.company
+                                            .description
+                                    }
+                                </p>
+                            )}
+
+                            {job.company?.website && (
+                                <a
+                                    href={
+                                        job.company.website
+                                    }
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="jd-company-link"
+                                >
+                                    Visit company
+                                    <ExternalLink
+                                        size={13}
+                                    />
+                                </a>
+                            )}
+                        </section>
+
+                        <section className="jd-sidebar-meta">
+                            <div>
+                                <MapPin size={16} />
+                                <div>
+                                    <span>Location</span>
+                                    <strong>
+                                        {job.location ||
+                                            "Remote"}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div>
+                                <BriefcaseBusiness
+                                    size={16}
+                                />
+                                <div>
+                                    <span>Job type</span>
+                                    <strong>
+                                        {formatEnum(
+                                            job.jobType
+                                        )}
+                                    </strong>
+                                </div>
+                            </div>
+
+                            <div>
+                                <CalendarDays size={16} />
+                                <div>
+                                    <span>Posted</span>
+                                    <strong>
+                                        {formatDate(
+                                            postedDate
+                                        )}
+                                    </strong>
+                                </div>
+                            </div>
+                        </section>
+
+                        <Link
+                            to="/student/jobs"
+                            className="jd-browse-link"
+                        >
+                            <ArrowLeft size={14} />
+                            Explore more opportunities
+                        </Link>
                     </aside>
                 </div>
             </div>
 
+            {/* =====================================================
+                APPLY MODAL
+               ===================================================== */}
+
             {showApplyModal && (
                 <div
-                    className="modal-backdrop"
+                    className="jd-modal-backdrop"
                     onMouseDown={(event) => {
                         if (
                             event.target ===
@@ -487,65 +1016,81 @@ function JobDetails() {
                         }
                     }}
                 >
-                    <div className="apply-modal">
-
+                    <div
+                        className="jd-apply-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="apply-modal-title"
+                    >
                         <button
-                            className="modal-close"
+                            type="button"
+                            className="jd-modal-close"
                             onClick={() =>
-                                setShowApplyModal(false)
+                                setShowApplyModal(
+                                    false
+                                )
                             }
-                            aria-label="Close"
+                            aria-label="Close application dialog"
                         >
                             <X size={18} />
                         </button>
 
-                        <div className="apply-modal-icon">
-                            <BriefcaseBusiness size={23} />
+                        <div className="jd-modal-icon">
+                            <BriefcaseBusiness
+                                size={23}
+                            />
                         </div>
 
-                        <span className="eyebrow">
+                        <span className="jd-eyebrow">
                             APPLICATION
                         </span>
 
-                        <h2>
+                        <h2 id="apply-modal-title">
                             Ready to apply?
                         </h2>
 
-                        <p>
-                            You're applying for
-                            <strong>
-                                {" "}
-                                {job.title}
-                            </strong>{" "}
-                            at
-                            <strong>
-                                {" "}
-                                {companyName}
-                            </strong>.
+                        <p className="jd-modal-intro">
+                            You're applying for{" "}
+                            <strong>{job.title}</strong>{" "}
+                            at{" "}
+                            <strong>{companyName}</strong>.
                         </p>
 
-                        <div className="apply-check">
+                        <div className="jd-modal-check">
                             <CheckCircle2 size={17} />
-                            Submit your current profile
+                            <span>
+                                Submit your current profile
+                            </span>
                         </div>
 
-                        <div className="apply-check">
+                        <div className="jd-modal-check">
                             <CheckCircle2 size={17} />
-                            Submit your current resume
+                            <span>
+                                Submit your current resume
+                            </span>
                         </div>
 
-                        <div className="modal-actions">
+                        <div className="jd-modal-note">
+                            Make sure your profile and resume
+                            are up to date before submitting.
+                        </div>
+
+                        <div className="jd-modal-actions">
                             <button
-                                className="secondary-button"
+                                type="button"
+                                className="jd-secondary-button"
                                 onClick={() =>
-                                    setShowApplyModal(false)
+                                    setShowApplyModal(
+                                        false
+                                    )
                                 }
                             >
                                 Cancel
                             </button>
 
                             <button
-                                className="primary-button"
+                                type="button"
+                                className="jd-primary-button"
                                 onClick={handleApply}
                                 disabled={applying}
                             >
@@ -554,62 +1099,78 @@ function JobDetails() {
                                     : "Confirm application"}
                             </button>
                         </div>
-
                     </div>
                 </div>
             )}
 
+            {/* =====================================================
+                SUCCESS MODAL
+               ===================================================== */}
+
             {applicationSuccess && (
-                <div className="modal-backdrop">
-
-                    <div className="success-modal">
-
-                        <div className="success-icon">
+                <div className="jd-modal-backdrop">
+                    <div
+                        className="jd-success-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="success-title"
+                    >
+                        <div className="jd-success-icon">
                             <CheckCircle2 size={31} />
                         </div>
 
-                        <span className="eyebrow">
+                        <span className="jd-eyebrow">
                             APPLICATION SENT
                         </span>
 
-                        <h2>
+                        <h2 id="success-title">
                             You're officially in.
                         </h2>
 
                         <p>
                             Your application for{" "}
-                            <strong>
-                                {job.title}
-                            </strong>{" "}
+                            <strong>{job.title}</strong>{" "}
                             has been submitted successfully.
                         </p>
 
-                        <div className="modal-actions">
+                        <div className="jd-success-status">
+                            <span>
+                                <Check size={14} />
+                            </span>
+
+                            Application status
+                            <strong>Applied</strong>
+                        </div>
+
+                        <div className="jd-modal-actions">
                             <Link
                                 to="/student/applications"
-                                className="primary-button"
+                                className="jd-primary-button"
                                 onClick={() =>
-                                    setApplicationSuccess(false)
+                                    setApplicationSuccess(
+                                        false
+                                    )
                                 }
                             >
-                                View applications
+                                View application
                             </Link>
 
                             <button
-                                className="secondary-button"
+                                type="button"
+                                className="jd-secondary-button"
                                 onClick={() =>
-                                    setApplicationSuccess(false)
+                                    setApplicationSuccess(
+                                        false
+                                    )
                                 }
                             >
                                 Continue browsing
                             </button>
                         </div>
-
                     </div>
-
                 </div>
             )}
-        </>
+        </div>
     );
 }
 

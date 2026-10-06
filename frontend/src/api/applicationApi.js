@@ -39,3 +39,25 @@ export const withdrawApplication = async (applicationId) => {
 
     return response.data;
 };
+
+// Recruiter: fetch applicants for a job
+export const getApplicantsForJob = async (jobId) => {
+    const response = await api.get(
+        `/api/recruiters/me/jobs/${jobId}/applications`
+    );
+
+    return response.data;
+};
+
+// Recruiter: update an application's status
+export const updateApplicationStatus = async (
+    applicationId,
+    status
+) => {
+    const response = await api.patch(
+        `/api/recruiters/me/applications/${applicationId}/status`,
+        { status }
+    );
+
+    return response.data;
+};

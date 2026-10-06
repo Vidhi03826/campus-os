@@ -1,7 +1,4 @@
-
-import { useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-
+import { useEffect, useMemo, useState } from "react";
 import {
     Activity,
     BarChart3,
@@ -21,7 +18,15 @@ import {
     X,
 } from "lucide-react";
 
+import {
+    NavLink,
+    Outlet,
+    useLocation,
+    useNavigate,
+} from "react-router-dom";
+
 import { useAuth } from "../../auth/AuthContext";
+import { getUnreadNotificationCount } from "../../api/notificationApi";
 
 const navigation = {
     STUDENT: [
@@ -75,7 +80,7 @@ const navigation = {
         },
         {
             label: "Applicants",
-            path: "/recruiter/applicants",
+            path: "/recruiter/jobs",
             icon: Users,
         },
         {
@@ -129,13 +134,64 @@ const navigation = {
     ],
 };
 
+const roleLabels = {
+    STUDENT: "Student",
+    RECRUITER: "Recruiter",
+    ADMIN: "Administrator",
+};
+
 function getInitials(name = "") {
-    return name
+    const initials = name
         .trim()
         .split(/\s+/)
         .slice(0, 2)
         .map((part) => part[0]?.toUpperCase())
         .join("");
+
+    return initials || "U";
+}
+
+function getPageTitle(pathname, links) {
+    const exactMatch = links.find(
+        (item) => pathname === item.path
+    );
+
+    if (exactMatch) {
+        return exactMatch.label;
+    }
+
+    if (
+        pathname.startsWith("/student/jobs/") &&
+        pathname !== "/student/jobs"
+    ) {
+        return "Job Details";
+    }
+
+    if (
+        pathname.startsWith("/student/applications/")
+    ) {
+        return "Application Details";
+    }
+
+    if (
+        pathname.startsWith("/recruiter/jobs/") &&
+        pathname.endsWith("/edit")
+    ) {
+        return "Edit Job";
+    }
+
+    if (
+        pathname.startsWith("/recruiter/jobs/") &&
+        pathname.endsWith("/applicants")
+    ) {
+        return "Applicants";
+    }
+
+    if (pathname === "/recruiter/jobs/new") {
+        return "Create Job";
+    }
+
+    return "Workspace";
 }
 
 function AppShell() {
@@ -145,23 +201,129 @@ function AppShell() {
     const location = useLocation();
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [searchFocused, setSearchFocused] = useState(false);
 
     const links = navigation[user?.role] ?? [];
 
-    const currentPage =
-        links.find((item) => location.pathname === item.path)?.label ??
-        (location.pathname === "/recruiter/jobs/new"
-            ? "Create Job"
-            : location.pathname.startsWith("/recruiter/jobs/") &&
-            location.pathname.endsWith("/edit")
-                ? "Edit Job"
-                : "Workspace");
+    const currentPage = useMemo(
+        () =>
+            getPageTitle(
+                location.pathname,
+                links
+            ),
+        [location.pathname, links]
+    );
+
+    const initials = getInitials(user?.name);
+
+    const roleLabel =
+        roleLabels[user?.role] ||
+        user?.role ||
+        "User";
+
+    /*
+     * Notification count
+     */
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadUnreadCount = async () => {
+            if (!user?.role) {
+                setUnreadCount(0);
+                return;
+            }
+
+            try {
+                const count =
+                    await getUnreadNotificationCount();
+
+                if (cancelled) return;
+
+                const parsed = Number(
+                    typeof count === "object"
+                        ? count?.count ??
+                        count?.unreadCount ??
+                        0
+                        : count
+                );
+
+                setUnreadCount(
+                    Number.isFinite(parsed) &&
+                    parsed > 0
+                        ? parsed
+                        : 0
+                );
+            } catch (error) {
+                console.error(
+                    "Unable to load notification count:",
+                    error
+                );
+
+                if (!cancelled) {
+                    setUnreadCount(0);
+                }
+            }
+        };
+
+        loadUnreadCount();
+
+        /*
+         * Refresh the count periodically so the shell
+         * stays useful even when a notification is
+         * generated while the user is on another page.
+         */
+        const interval = window.setInterval(
+            loadUnreadCount,
+            30000
+        );
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(interval);
+        };
+    }, [user?.role]);
+
+    /*
+     * Close mobile navigation when route changes.
+     */
+    useEffect(() => {
+        setSidebarOpen(false);
+    }, [location.pathname]);
+
+    /*
+     * Close sidebar with Escape.
+     */
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (
+                event.key === "Escape" &&
+                sidebarOpen
+            ) {
+                setSidebarOpen(false);
+            }
+        };
+
+        window.addEventListener(
+            "keydown",
+            handleKeyDown
+        );
+
+        return () => {
+            window.removeEventListener(
+                "keydown",
+                handleKeyDown
+            );
+        };
+    }, [sidebarOpen]);
 
     const handleLogout = async () => {
         try {
             await logout();
         } finally {
-            navigate("/login", { replace: true });
+            navigate("/login", {
+                replace: true,
+            });
         }
     };
 
@@ -175,34 +337,101 @@ function AppShell() {
         }
     };
 
+    const handleSearchKeyDown = (event) => {
+        if (event.key === "Escape") {
+            event.currentTarget.blur();
+            return;
+        }
+
+        if (
+            event.key === "Enter" &&
+            event.currentTarget.value.trim()
+        ) {
+            if (user?.role === "STUDENT") {
+                navigate("/student/jobs");
+            } else if (
+                user?.role === "RECRUITER"
+            ) {
+                navigate("/recruiter/jobs");
+            }
+        }
+    };
+
     return (
         <div className="app-shell">
+            {/* Mobile backdrop */}
             {sidebarOpen && (
                 <button
+                    type="button"
                     className="mobile-backdrop"
-                    onClick={() => setSidebarOpen(false)}
+                    onClick={() =>
+                        setSidebarOpen(false)
+                    }
                     aria-label="Close navigation"
                 />
             )}
 
+            {/* ================================================= */}
+            {/* SIDEBAR */}
+            {/* ================================================= */}
+
             <aside
-                className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}
+                className={`sidebar ${
+                    sidebarOpen
+                        ? "sidebar-open"
+                        : ""
+                }`}
             >
                 <div className="sidebar-header">
-                    <div className="brand">
-                        <div className="brand-mark">C</div>
+                    <button
+                        type="button"
+                        className="brand"
+                        onClick={() => {
+                            if (
+                                user?.role ===
+                                "STUDENT"
+                            ) {
+                                navigate(
+                                    "/student/dashboard"
+                                );
+                            } else if (
+                                user?.role ===
+                                "RECRUITER"
+                            ) {
+                                navigate(
+                                    "/recruiter/dashboard"
+                                );
+                            } else if (
+                                user?.role === "ADMIN"
+                            ) {
+                                navigate(
+                                    "/admin/dashboard"
+                                );
+                            }
+                        }}
+                        aria-label="Go to dashboard"
+                    >
+                        <div className="brand-mark">
+                            C
+                        </div>
 
                         <div>
-                            <div className="brand-name">CampusOS</div>
+                            <div className="brand-name">
+                                CampusOS
+                            </div>
+
                             <div className="brand-subtitle">
                                 Career workspace
                             </div>
                         </div>
-                    </div>
+                    </button>
 
                     <button
+                        type="button"
                         className="icon-button mobile-close"
-                        onClick={() => setSidebarOpen(false)}
+                        onClick={() =>
+                            setSidebarOpen(false)
+                        }
                         aria-label="Close sidebar"
                     >
                         <X size={20} />
@@ -213,25 +442,69 @@ function AppShell() {
                     Workspace
                 </div>
 
-                <nav className="sidebar-nav">
+                <nav
+                    className="sidebar-nav"
+                    aria-label="Main navigation"
+                >
                     {links.map((item) => {
                         const Icon = item.icon;
+
+                        const isNotification =
+                            item.label ===
+                            "Notifications";
 
                         return (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
                                 end={
-                                    item.path === "/recruiter/jobs" ||
-                                    item.path === "/student/jobs"
+                                    item.path ===
+                                    "/recruiter/jobs" ||
+                                    item.path ===
+                                    "/student/jobs"
                                 }
-                                onClick={() => setSidebarOpen(false)}
-                                className={({ isActive }) =>
-                                    `nav-link ${isActive ? "active" : ""}`
+                                onClick={() =>
+                                    setSidebarOpen(
+                                        false
+                                    )
+                                }
+                                className={({
+                                                isActive,
+                                            }) =>
+                                    `nav-link ${
+                                        isActive
+                                            ? "active"
+                                            : ""
+                                    }`
                                 }
                             >
-                                <Icon size={19} strokeWidth={2} />
-                                <span>{item.label}</span>
+                                <span className="nav-link-icon">
+                                    <Icon
+                                        size={19}
+                                        strokeWidth={2}
+                                    />
+
+                                    {isNotification &&
+                                        unreadCount >
+                                        0 && (
+                                            <span className="nav-link-dot" />
+                                        )}
+                                </span>
+
+                                <span>
+                                    {item.label}
+                                </span>
+
+                                {isNotification &&
+                                    unreadCount >
+                                    0 && (
+                                        <span className="nav-unread-count">
+                                            {unreadCount >
+                                            99
+                                                ? "99+"
+                                                : unreadCount}
+                                        </span>
+                                    )}
                             </NavLink>
                         );
                     })}
@@ -239,17 +512,24 @@ function AppShell() {
 
                 <div className="sidebar-bottom">
                     <div className="sidebar-tip">
-                        <div className="sidebar-tip-icon">✦</div>
+                        <div className="sidebar-tip-icon">
+                            ✦
+                        </div>
 
                         <div>
-                            <strong>Keep building</strong>
+                            <strong>
+                                Keep building
+                            </strong>
+
                             <p>
-                                Your next opportunity can start here.
+                                Your next opportunity
+                                can start here.
                             </p>
                         </div>
                     </div>
 
                     <button
+                        type="button"
                         className="logout-button"
                         onClick={handleLogout}
                     >
@@ -259,60 +539,138 @@ function AppShell() {
                 </div>
             </aside>
 
+            {/* ================================================= */}
+            {/* MAIN CONTENT */}
+            {/* ================================================= */}
+
             <div className="app-content">
                 <header className="topbar">
                     <div className="topbar-left">
                         <button
+                            type="button"
                             className="icon-button mobile-menu"
-                            onClick={() => setSidebarOpen(true)}
+                            onClick={() =>
+                                setSidebarOpen(true)
+                            }
                             aria-label="Open navigation"
                         >
                             <Menu size={21} />
                         </button>
 
-                        <div>
+                        <div className="topbar-heading">
                             <div className="breadcrumb">
-                                CampusOS
-                                <span>/</span>
-                                {currentPage}
+                                <span className="breadcrumb-root">
+                                    CampusOS
+                                </span>
+
+                                <span className="breadcrumb-separator">
+                                    /
+                                </span>
+
+                                <strong>
+                                    {currentPage}
+                                </strong>
                             </div>
                         </div>
                     </div>
 
                     <div className="topbar-right">
-                        <div className="topbar-search">
+                        {/* Search */}
+                        <div
+                            className={`topbar-search ${
+                                searchFocused
+                                    ? "focused"
+                                    : ""
+                            }`}
+                        >
                             <Search size={17} />
 
                             <input
                                 type="text"
                                 placeholder="Search your workspace..."
-                                aria-label="Search"
+                                aria-label="Search your workspace"
+                                onFocus={() =>
+                                    setSearchFocused(
+                                        true
+                                    )
+                                }
+                                onBlur={() =>
+                                    setSearchFocused(
+                                        false
+                                    )
+                                }
+                                onKeyDown={
+                                    handleSearchKeyDown
+                                }
                             />
 
-                            <kbd>⌘ K</kbd>
+                            <kbd>
+                                <span>⌘</span>
+                                K
+                            </kbd>
                         </div>
 
+                        {/* Notifications */}
                         <button
-                            className="notification-button"
-                            onClick={handleNotificationClick}
-                            aria-label="Notifications"
+                            type="button"
+                            className={`notification-button ${
+                                unreadCount > 0
+                                    ? "has-unread"
+                                    : ""
+                            }`}
+                            onClick={
+                                handleNotificationClick
+                            }
+                            aria-label={
+                                unreadCount > 0
+                                    ? `${unreadCount} unread notifications`
+                                    : "Notifications"
+                            }
                         >
                             <Bell size={19} />
-                            <span className="notification-dot" />
+
+                            {unreadCount > 0 && (
+                                <span className="notification-badge">
+                                    {unreadCount >
+                                    99
+                                        ? "99+"
+                                        : unreadCount}
+                                </span>
+                            )}
                         </button>
 
                         <div className="topbar-divider" />
 
-                        <div className="user-menu">
+                        {/* User */}
+                        <button
+                            type="button"
+                            className="user-menu"
+                            onClick={() => {
+                                if (
+                                    user?.role ===
+                                    "STUDENT"
+                                ) {
+                                    navigate(
+                                        "/student/profile"
+                                    );
+                                }
+                            }}
+                        >
                             <div className="avatar">
-                                {getInitials(user?.name)}
+                                {initials}
                             </div>
 
                             <div className="user-meta">
-                                <strong>{user?.name}</strong>
-                                <span>{user?.role}</span>
+                                <strong>
+                                    {user?.name ||
+                                        "User"}
+                                </strong>
+
+                                <span>
+                                    {roleLabel}
+                                </span>
                             </div>
-                        </div>
+                        </button>
                     </div>
                 </header>
 

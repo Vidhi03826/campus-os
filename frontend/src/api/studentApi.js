@@ -13,9 +13,7 @@ export const getJobs = async (params = {}) => {
 };
 
 export const getJobById = async (jobId) => {
-    const response = await api.get(
-        `/api/jobs/${jobId}`
-    );
+    const response = await api.get(`/api/jobs/${jobId}`);
 
     return response.data;
 };
@@ -77,6 +75,17 @@ export const deleteResume = async () => {
     );
 };
 
-export const getResumeDownloadUrl = () => {
-    return "http://localhost:8082/api/students/me/resume/download";
+/*
+ * Download through Axios so the existing authentication
+ * interceptor can attach the access token.
+ */
+export const downloadResume = async () => {
+    const response = await api.get(
+        "/api/students/me/resume/download",
+        {
+            responseType: "blob",
+        }
+    );
+
+    return response;
 };

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     ArrowRight,
-    Bell,
     Bookmark,
     BriefcaseBusiness,
     CheckCircle2,
     ChevronRight,
     Clock3,
     FileText,
-    Plus,
+    RefreshCw,
+    Search,
     Sparkles,
+    Target,
     TrendingUp,
     UserRound,
 } from "lucide-react";
@@ -22,9 +23,9 @@ import {
     getResumeMetadata,
     getSavedJobs,
 } from "../../api/studentApi";
-import {
-    getMyApplications,
-} from "../../api/applicationApi";
+import { getMyApplications } from "../../api/applicationApi";
+
+import "../../styles/student-dashboard.css";
 
 function formatStatus(status) {
     if (!status) {
@@ -72,8 +73,7 @@ function formatRelativeDate(value) {
         return "Recently";
     }
 
-    const difference =
-        Date.now() - date.getTime();
+    const difference = Date.now() - date.getTime();
 
     const days = Math.floor(
         difference / (1000 * 60 * 60 * 24)
@@ -93,11 +93,9 @@ function formatRelativeDate(value) {
 
     const months = Math.floor(days / 30);
 
-    if (months === 1) {
-        return "1 month ago";
-    }
-
-    return `${months} months ago`;
+    return months === 1
+        ? "1 month ago"
+        : `${months} months ago`;
 }
 
 function formatJobType(value) {
@@ -118,14 +116,10 @@ function formatSalary(min, max) {
 
     const format = (value) => {
         if (value >= 100000) {
-            return `₹${(
-                value / 100000
-            ).toFixed(1)}L`;
+            return `₹${(value / 100000).toFixed(1)}L`;
         }
 
-        return `₹${Math.round(
-            value / 1000
-        )}K`;
+        return `₹${Math.round(value / 1000)}K`;
     };
 
     if (min != null && max != null) {
@@ -142,11 +136,23 @@ function getInitials(name = "") {
         .trim()
         .split(/\s+/)
         .slice(0, 2)
-        .map(
-            (part) =>
-                part[0]?.toUpperCase()
-        )
+        .map((part) => part[0]?.toUpperCase())
         .join("");
+}
+
+function extractList(value) {
+    if (Array.isArray(value)) {
+        return value;
+    }
+
+    return (
+        value?.content ||
+        value?.items ||
+        value?.jobs ||
+        value?.applications ||
+        value?.data ||
+        []
+    );
 }
 
 function StatCard({
@@ -154,13 +160,13 @@ function StatCard({
                       label,
                       value,
                       meta,
-                      tone = "blue",
+                      href,
                   }) {
-    return (
-        <div className={`dashboard-stat-card ${tone}`}>
+    const content = (
+        <>
             <div className="dashboard-stat-top">
                 <div className="dashboard-stat-icon">
-                    <Icon size={19} />
+                    <Icon size={18} />
                 </div>
 
                 {meta && (
@@ -170,161 +176,265 @@ function StatCard({
                 )}
             </div>
 
-            <div className="dashboard-stat-value">
+            <strong className="dashboard-stat-value">
                 {value}
-            </div>
+            </strong>
 
-            <div className="dashboard-stat-label">
+            <span className="dashboard-stat-label">
                 {label}
-            </div>
+            </span>
+        </>
+    );
+
+    if (href) {
+        return (
+            <Link
+                to={href}
+                className="dashboard-stat-card"
+            >
+                {content}
+            </Link>
+        );
+    }
+
+    return (
+        <div className="dashboard-stat-card">
+            {content}
         </div>
     );
 }
 
+function ApplicationRow({ application }) {
+    const status = String(
+        application.status || "APPLIED"
+    ).toUpperCase();
+
+    const title =
+        application.jobTitle ||
+        application.job?.title ||
+        "Untitled opportunity";
+
+    const company =
+        application.companyName ||
+        application.company?.name ||
+        "Company";
+
+    const applicationId =
+        application.applicationId ||
+        application.id;
+
+    return (
+        <Link
+            to={
+                applicationId
+                    ? `/student/applications/${applicationId}`
+                    : "/student/applications"
+            }
+            className="dashboard-application-row"
+        >
+            <div className="dashboard-company-avatar">
+                {getInitials(company) || "C"}
+            </div>
+
+            <div className="dashboard-application-main">
+                <strong>{title}</strong>
+
+                <span>
+                    {company}
+                    <span className="dashboard-dot">
+                        •
+                    </span>
+                    {formatRelativeDate(
+                        application.updatedAt ||
+                        application.appliedAt
+                    )}
+                </span>
+            </div>
+
+            <span
+                className={`dashboard-status ${getStatusClass(
+                    status
+                )}`}
+            >
+                {formatStatus(status)}
+            </span>
+
+            <ChevronRight
+                size={16}
+                className="dashboard-row-arrow"
+            />
+        </Link>
+    );
+}
+
+function RecommendedJob({ job }) {
+    const company =
+        job.companyName ||
+        job.company?.name ||
+        "Company";
+
+    return (
+        <Link
+            to={`/student/jobs/${job.id}`}
+            className="dashboard-job-card"
+        >
+            <div className="dashboard-job-top">
+                <div className="dashboard-company-avatar">
+                    {getInitials(company) || "C"}
+                </div>
+
+                <Bookmark size={16} />
+            </div>
+
+            <span className="dashboard-job-company">
+                {company}
+            </span>
+
+            <strong className="dashboard-job-title">
+                {job.title}
+            </strong>
+
+            <div className="dashboard-job-meta">
+                <span>
+                    {job.location || "Remote"}
+                </span>
+
+                <span>
+                    {formatJobType(job.jobType)}
+                </span>
+            </div>
+
+            <div className="dashboard-job-bottom">
+                <strong>
+                    {formatSalary(
+                        job.salaryMin,
+                        job.salaryMax
+                    )}
+                </strong>
+
+                <ArrowRight size={15} />
+            </div>
+        </Link>
+    );
+}
+
 function StudentDashboard() {
-    const [user, setUser] =
-        useState(null);
+    const [user, setUser] = useState(null);
+    const [applications, setApplications] = useState([]);
+    const [savedJobs, setSavedJobs] = useState([]);
+    const [recommendedJobs, setRecommendedJobs] = useState([]);
+    const [resume, setResume] = useState(null);
 
-    const [applications, setApplications] =
-        useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState("");
 
-    const [savedJobs, setSavedJobs] =
-        useState([]);
+    const loadDashboard = async (
+        isRefresh = false
+    ) => {
+        try {
+            if (isRefresh) {
+                setRefreshing(true);
+            } else {
+                setLoading(true);
+            }
 
-    const [recommendedJobs, setRecommendedJobs] =
-        useState([]);
+            setError("");
 
-    const [resume, setResume] =
-        useState(null);
+            const results =
+                await Promise.allSettled([
+                    getCurrentUser(),
+                    getMyApplications(),
+                    getSavedJobs(),
+                    getResumeMetadata(),
+                    getJobs({
+                        page: 0,
+                        size: 6,
+                        sort: "createdAt,desc",
+                    }),
+                ]);
 
-    const [loading, setLoading] =
-        useState(true);
+            const [
+                userResult,
+                applicationsResult,
+                savedResult,
+                resumeResult,
+                jobsResult,
+            ] = results;
 
-    const [error, setError] =
-        useState("");
+            if (
+                userResult.status ===
+                "fulfilled"
+            ) {
+                setUser(userResult.value);
+            }
+
+            if (
+                applicationsResult.status ===
+                "fulfilled"
+            ) {
+                setApplications(
+                    extractList(
+                        applicationsResult.value
+                    )
+                );
+            }
+
+            if (
+                savedResult.status ===
+                "fulfilled"
+            ) {
+                setSavedJobs(
+                    extractList(savedResult.value)
+                );
+            }
+
+            if (
+                resumeResult.status ===
+                "fulfilled"
+            ) {
+                setResume(
+                    resumeResult.value
+                );
+            }
+
+            if (
+                jobsResult.status ===
+                "fulfilled"
+            ) {
+                setRecommendedJobs(
+                    extractList(
+                        jobsResult.value
+                    )
+                );
+            }
+
+            if (
+                userResult.status ===
+                "rejected"
+            ) {
+                setError(
+                    userResult.reason?.response
+                        ?.data?.message ||
+                    "Unable to load your workspace."
+                );
+            }
+        } catch (err) {
+            console.error(
+                "Dashboard loading failed:",
+                err
+            );
+
+            setError(
+                "Unable to load your dashboard."
+            );
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
-        const loadDashboard = async () => {
-            try {
-                setLoading(true);
-                setError("");
-
-                /*
-                 * Promise.allSettled keeps the dashboard
-                 * resilient if one optional widget fails.
-                 */
-                const results =
-                    await Promise.allSettled([
-                        getCurrentUser(),
-                        getMyApplications(),
-                        getSavedJobs(),
-                        getResumeMetadata(),
-                        getJobs({
-                            page: 0,
-                            size: 6,
-                            sort: "createdAt,desc",
-                        }),
-                    ]);
-
-                const [
-                    userResult,
-                    applicationsResult,
-                    savedResult,
-                    resumeResult,
-                    jobsResult,
-                ] = results;
-
-                if (
-                    userResult.status ===
-                    "fulfilled"
-                ) {
-                    setUser(
-                        userResult.value
-                    );
-                }
-
-                if (
-                    applicationsResult.status ===
-                    "fulfilled"
-                ) {
-                    const value =
-                        applicationsResult.value;
-
-                    setApplications(
-                        Array.isArray(value)
-                            ? value
-                            : value?.content || []
-                    );
-                }
-
-                if (
-                    savedResult.status ===
-                    "fulfilled"
-                ) {
-                    const value =
-                        savedResult.value;
-
-                    setSavedJobs(
-                        Array.isArray(value)
-                            ? value
-                            : value?.content || []
-                    );
-                }
-
-                if (
-                    resumeResult.status ===
-                    "fulfilled"
-                ) {
-                    setResume(
-                        resumeResult.value
-                    );
-                }
-
-                if (
-                    jobsResult.status ===
-                    "fulfilled"
-                ) {
-                    const value =
-                        jobsResult.value;
-
-                    const jobs =
-                        Array.isArray(value)
-                            ? value
-                            : value?.content || [];
-
-                    setRecommendedJobs(
-                        jobs
-                    );
-                }
-
-                /*
-                 * Only show a page-level error if the
-                 * primary identity request failed.
-                 */
-                if (
-                    userResult.status ===
-                    "rejected"
-                ) {
-                    setError(
-                        userResult.reason?.response
-                            ?.data?.message ||
-                        "Unable to load your workspace."
-                    );
-                }
-            } catch (err) {
-                console.error(
-                    "Dashboard loading failed:",
-                    err
-                );
-
-                setError(
-                    "Unable to load your dashboard."
-                );
-            } finally {
-                setLoading(false);
-            }
-        };
-
         loadDashboard();
     }, []);
 
@@ -334,32 +444,29 @@ function StudentDashboard() {
             ?.split(/\s+/)[0] ||
         "there";
 
+    const initials =
+        getInitials(user?.name) || "U";
+
     const applicationStats =
         useMemo(() => {
             const stats = {
-                total: applications.length,
                 applied: 0,
                 review: 0,
                 interview: 0,
-                accepted: 0,
+                selected: 0,
                 rejected: 0,
                 withdrawn: 0,
             };
 
             applications.forEach(
                 (application) => {
-                    const status =
-                        String(
-                            application.status ||
-                            "APPLIED"
-                        ).toUpperCase();
-
-                    stats.total +=
-                        0;
+                    const status = String(
+                        application.status ||
+                        "APPLIED"
+                    ).toUpperCase();
 
                     if (
-                        status ===
-                        "APPLIED"
+                        status === "APPLIED"
                     ) {
                         stats.applied++;
                     } else if (
@@ -371,25 +478,23 @@ function StudentDashboard() {
                     ) {
                         stats.review++;
                     } else if (
-                        status ===
-                        "INTERVIEW"
+                        status === "INTERVIEW"
                     ) {
                         stats.interview++;
                     } else if (
                         [
+                            "SELECTED",
                             "ACCEPTED",
                             "HIRED",
                         ].includes(status)
                     ) {
-                        stats.accepted++;
+                        stats.selected++;
                     } else if (
-                        status ===
-                        "REJECTED"
+                        status === "REJECTED"
                     ) {
                         stats.rejected++;
                     } else if (
-                        status ===
-                        "WITHDRAWN"
+                        status === "WITHDRAWN"
                     ) {
                         stats.withdrawn++;
                     }
@@ -399,38 +504,17 @@ function StudentDashboard() {
             return stats;
         }, [applications]);
 
-    const profileProgress =
-        useMemo(() => {
-            const checks = [
-                Boolean(user?.name),
-                Boolean(user?.email),
-                Boolean(resume),
-            ];
-
-            const completed =
-                checks.filter(Boolean).length;
-
-            return Math.round(
-                (completed /
-                    checks.length) *
-                100
-            );
-        }, [user, resume]);
-
     const activeApplications =
         applications.filter(
-            (application) => {
-                const status =
-                    String(
-                        application.status ||
-                        ""
-                    ).toUpperCase();
-
-                return ![
+            (application) =>
+                ![
                     "REJECTED",
                     "WITHDRAWN",
-                ].includes(status);
-            }
+                ].includes(
+                    String(
+                        application.status || ""
+                    ).toUpperCase()
+                )
         ).length;
 
     const recentApplications =
@@ -438,21 +522,21 @@ function StudentDashboard() {
             .sort((a, b) => {
                 const first =
                     new Date(
+                        a.updatedAt ||
                         a.appliedAt ||
-                        a.createdAt ||
                         0
                     ).getTime();
 
                 const second =
                     new Date(
+                        b.updatedAt ||
                         b.appliedAt ||
-                        b.createdAt ||
                         0
                     ).getTime();
 
                 return second - first;
             })
-            .slice(0, 4);
+            .slice(0, 5);
 
     const appliedJobIds =
         new Set(
@@ -473,10 +557,68 @@ function StudentDashboard() {
             )
             .slice(0, 4);
 
+    const profileProgress =
+        useMemo(() => {
+            const checks = [
+                Boolean(user?.name),
+                Boolean(user?.email),
+                Boolean(resume),
+            ];
+
+            return Math.round(
+                (checks.filter(Boolean).length /
+                    checks.length) *
+                100
+            );
+        }, [user, resume]);
+
+    const nextAction = useMemo(() => {
+        if (profileProgress < 100) {
+            return {
+                title: "Complete your profile",
+                description:
+                    "A complete profile makes your application stronger.",
+                href: "/student/profile",
+                icon: UserRound,
+            };
+        }
+
+        if (!resume) {
+            return {
+                title: "Add your resume",
+                description:
+                    "Upload a resume before applying to more roles.",
+                href: "/student/resume",
+                icon: FileText,
+            };
+        }
+
+        if (applications.length === 0) {
+            return {
+                title: "Start applying",
+                description:
+                    "Explore opportunities that match your goals.",
+                href: "/student/jobs",
+                icon: Search,
+            };
+        }
+
+        return {
+            title: "Keep exploring",
+            description:
+                "You are making progress. Find your next opportunity.",
+            href: "/student/jobs",
+            icon: Target,
+        };
+    }, [
+        profileProgress,
+        resume,
+        applications.length,
+    ]);
+
     if (loading) {
         return (
             <div className="student-dashboard-loading">
-
                 <div className="dashboard-loading-hero" />
 
                 <div className="dashboard-loading-stats">
@@ -490,32 +632,31 @@ function StudentDashboard() {
                     <div />
                     <div />
                 </div>
-
             </div>
         );
     }
 
     return (
         <div className="student-dashboard">
-
-            {/* ================================================= */}
-            {/* ERROR */}
-            {/* ================================================= */}
-
             {error && (
                 <div className="dashboard-alert">
                     <span>{error}</span>
+
+                    <button
+                        type="button"
+                        onClick={() =>
+                            loadDashboard()
+                        }
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
 
-            {/* ================================================= */}
             {/* HERO */}
-            {/* ================================================= */}
 
             <section className="dashboard-hero-v2">
-
                 <div className="dashboard-hero-copy">
-
                     <div className="dashboard-welcome-pill">
                         <Sparkles size={13} />
                         Student workspace
@@ -523,672 +664,456 @@ function StudentDashboard() {
 
                     <h1>
                         Welcome back,{" "}
-                        <span>
-                            {firstName}.
-                        </span>
+                        <span>{firstName}.</span>
                     </h1>
 
                     <p>
-                        Your opportunities, applications
-                        and career progress — organized in
-                        one place.
+                        Your opportunities,
+                        applications and career
+                        progress — organized in one
+                        place.
                     </p>
 
                     <div className="dashboard-hero-actions">
-
                         <Link
                             to="/student/jobs"
-                            className="primary-button"
+                            className="dashboard-primary-action"
                         >
-                            <BriefcaseBusiness
-                                size={16}
-                            />
+                            <Search size={16} />
                             Explore opportunities
                             <ArrowRight size={15} />
                         </Link>
 
                         <Link
-                            to="/student/profile"
-                            className="secondary-button"
+                            to="/student/applications"
+                            className="dashboard-secondary-action"
                         >
-                            Complete profile
+                            Track applications
                         </Link>
-
                     </div>
-
                 </div>
 
-                <div className="dashboard-profile-card">
+                <div className="dashboard-profile-mini">
+                    <div className="dashboard-avatar-large">
+                        {initials}
+                    </div>
 
-                    <div className="dashboard-profile-top">
+                    <div>
+                        <strong>
+                            {user?.name ||
+                                "Student"}
+                        </strong>
 
-                        <div className="dashboard-avatar">
-                            {getInitials(
-                                user?.name
-                            )}
+                        <span>
+                            {user?.email ||
+                                "Student account"}
+                        </span>
+                    </div>
+
+                    <Link
+                        to="/student/profile"
+                        aria-label="Open profile"
+                    >
+                        <ChevronRight size={18} />
+                    </Link>
+                </div>
+            </section>
+
+            {/* STATS */}
+
+            <section className="dashboard-stats-grid">
+                <StatCard
+                    icon={FileText}
+                    label="Applications"
+                    value={applications.length}
+                    meta={`${activeApplications} active`}
+                    href="/student/applications"
+                />
+
+                <StatCard
+                    icon={Clock3}
+                    label="Under review"
+                    value={applicationStats.review}
+                    meta={
+                        applicationStats.interview > 0
+                            ? `${applicationStats.interview} interview`
+                            : "Keep going"
+                    }
+                    href="/student/applications"
+                />
+
+                <StatCard
+                    icon={Bookmark}
+                    label="Saved jobs"
+                    value={savedJobs.length}
+                    meta="Ready to revisit"
+                    href="/student/saved-jobs"
+                />
+
+                <StatCard
+                    icon={CheckCircle2}
+                    label="Selected"
+                    value={applicationStats.selected}
+                    meta={
+                        applicationStats.selected > 0
+                            ? "Great work"
+                            : "Your goal"
+                    }
+                    href="/student/applications"
+                />
+            </section>
+
+            {/* MAIN GRID */}
+
+            <section className="dashboard-main-grid">
+                <div className="dashboard-main-column">
+                    {/* NEXT ACTION */}
+
+                    <section className="dashboard-section-card dashboard-next-action">
+                        <div className="dashboard-section-heading">
+                            <div>
+                                <span className="dashboard-section-eyebrow">
+                                    NEXT BEST ACTION
+                                </span>
+
+                                <h2>
+                                    {nextAction.title}
+                                </h2>
+
+                                <p>
+                                    {nextAction.description}
+                                </p>
+                            </div>
+
+                            <div className="dashboard-next-icon">
+                                {(() => {
+                                    const ActionIcon = nextAction.icon;
+
+                                    return <ActionIcon size={21} />;
+                                })()}
+                            </div>
                         </div>
 
-                        <div>
-                            <span>
-                                PROFILE READINESS
-                            </span>
+                        <Link
+                            to={nextAction.href}
+                            className="dashboard-next-link"
+                        >
+                            Continue
+                            <ArrowRight size={15} />
+                        </Link>
+                    </section>
+
+                    {/* APPLICATIONS */}
+
+                    <section className="dashboard-section-card">
+                        <div className="dashboard-section-header">
+                            <div>
+                                <span className="dashboard-section-eyebrow">
+                                    APPLICATION TRACKER
+                                </span>
+
+                                <h2>
+                                    Recent applications
+                                </h2>
+                            </div>
+
+                            <Link
+                                to="/student/applications"
+                                className="dashboard-view-all"
+                            >
+                                View all
+                                <ArrowRight size={14} />
+                            </Link>
+                        </div>
+
+                        {recentApplications.length >
+                        0 ? (
+                            <div className="dashboard-application-list">
+                                {recentApplications.map(
+                                    (
+                                        application
+                                    ) => (
+                                        <ApplicationRow
+                                            key={
+                                                application.applicationId ||
+                                                application.id
+                                            }
+                                            application={
+                                                application
+                                            }
+                                        />
+                                    )
+                                )}
+                            </div>
+                        ) : (
+                            <div className="dashboard-empty-small">
+                                <div>
+                                    <FileText
+                                        size={19}
+                                    />
+                                </div>
+
+                                <strong>
+                                    No applications yet
+                                </strong>
+
+                                <span>
+                                    Your application
+                                    activity will
+                                    appear here.
+                                </span>
+
+                                <Link
+                                    to="/student/jobs"
+                                >
+                                    Browse jobs
+                                    <ArrowRight
+                                        size={14}
+                                    />
+                                </Link>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* RECOMMENDED */}
+
+                    <section className="dashboard-section-card">
+                        <div className="dashboard-section-header">
+                            <div>
+                                <span className="dashboard-section-eyebrow">
+                                    DISCOVER
+                                </span>
+
+                                <h2>
+                                    Fresh opportunities
+                                </h2>
+                            </div>
+
+                            <Link
+                                to="/student/jobs"
+                                className="dashboard-view-all"
+                            >
+                                Explore all
+                                <ArrowRight size={14} />
+                            </Link>
+                        </div>
+
+                        {recommended.length > 0 ? (
+                            <div className="dashboard-jobs-grid">
+                                {recommended.map(
+                                    (job) => (
+                                        <RecommendedJob
+                                            key={job.id}
+                                            job={job}
+                                        />
+                                    )
+                                )}
+                            </div>
+                        ) : (
+                            <div className="dashboard-empty-small">
+                                <div>
+                                    <BriefcaseBusiness
+                                        size={19}
+                                    />
+                                </div>
+
+                                <strong>
+                                    No fresh roles yet
+                                </strong>
+
+                                <span>
+                                    Check the jobs
+                                    marketplace for
+                                    new opportunities.
+                                </span>
+
+                                <Link
+                                    to="/student/jobs"
+                                >
+                                    Find opportunities
+                                    <ArrowRight
+                                        size={14}
+                                    />
+                                </Link>
+                            </div>
+                        )}
+                    </section>
+                </div>
+
+                {/* RIGHT RAIL */}
+
+                <aside className="dashboard-side-column">
+                    {/* PROFILE */}
+
+                    <section className="dashboard-side-card">
+                        <div className="dashboard-side-header">
+                            <div>
+                                <span>
+                                    PROFILE
+                                </span>
+
+                                <h3>
+                                    Profile strength
+                                </h3>
+                            </div>
 
                             <strong>
                                 {profileProgress}%
                             </strong>
                         </div>
 
-                    </div>
+                        <div className="dashboard-progress">
+                            <span
+                                style={{
+                                    width: `${profileProgress}%`,
+                                }}
+                            />
+                        </div>
 
-                    <div className="dashboard-progress-track">
-                        <div
-                            className="dashboard-progress-fill"
-                            style={{
-                                width:
-                                    `${profileProgress}%`,
-                            }}
-                        />
-                    </div>
-
-                    <div className="dashboard-profile-bottom">
-
-                        <span>
-                            {profileProgress ===
-                            100
-                                ? "You're ready to apply."
-                                : "A few details can make your profile stronger."}
-                        </span>
+                        <p>
+                            {profileProgress === 100
+                                ? "Your profile is looking complete."
+                                : "Complete your profile to make your workspace stronger."}
+                        </p>
 
                         <Link
                             to="/student/profile"
+                            className="dashboard-side-link"
                         >
-                            Improve
-                            <ChevronRight size={13} />
-                        </Link>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-            {/* ================================================= */}
-            {/* STAT CARDS */}
-            {/* ================================================= */}
-
-            <section className="dashboard-stat-grid">
-
-                <StatCard
-                    icon={FileText}
-                    label="Total applications"
-                    value={applicationStats.total}
-                    meta={
-                        activeApplications > 0
-                            ? `${activeApplications} active`
-                            : "Start applying"
-                    }
-                />
-
-                <StatCard
-                    icon={Clock3}
-                    label="In review"
-                    value={applicationStats.review}
-                    meta={
-                        applicationStats.review > 0
-                            ? "Needs attention"
-                            : "No reviews yet"
-                    }
-                    tone="amber"
-                />
-
-                <StatCard
-                    icon={Bookmark}
-                    label="Saved opportunities"
-                    value={savedJobs.length}
-                    meta={
-                        savedJobs.length > 0
-                            ? "Worth revisiting"
-                            : "Start bookmarking"
-                    }
-                    tone="violet"
-                />
-
-                <StatCard
-                    icon={TrendingUp}
-                    label="Interviews"
-                    value={applicationStats.interview}
-                    meta={
-                        applicationStats.interview > 0
-                            ? "Good momentum"
-                            : "Keep applying"
-                    }
-                    tone="green"
-                />
-
-            </section>
-
-            {/* ================================================= */}
-            {/* MAIN GRID */}
-            {/* ================================================= */}
-
-            <section className="dashboard-main-grid">
-
-                {/* APPLICATION ACTIVITY */}
-
-                <div className="dashboard-surface dashboard-applications">
-
-                    <div className="dashboard-section-header">
-
-                        <div>
-                            <span className="eyebrow">
-                                APPLICATION ACTIVITY
-                            </span>
-
-                            <h2>
-                                Your latest applications
-                            </h2>
-                        </div>
-
-                        <Link
-                            to="/student/applications"
-                            className="dashboard-view-link"
-                        >
-                            View all
+                            Improve profile
                             <ArrowRight size={14} />
                         </Link>
+                    </section>
 
-                    </div>
+                    {/* CAREER SNAPSHOT */}
 
-                    {recentApplications.length ===
-                    0 ? (
-                        <div className="dashboard-empty">
+                    <section className="dashboard-side-card">
+                        <div className="dashboard-side-header">
+                            <div>
+                                <span>
+                                    CAREER SNAPSHOT
+                                </span>
 
-                            <div className="dashboard-empty-icon">
-                                <FileText size={21} />
+                                <h3>
+                                    Your progress
+                                </h3>
                             </div>
 
+                            <TrendingUp size={18} />
+                        </div>
+
+                        <div className="dashboard-progress-list">
+                            <div>
+                                <span>
+                                    Applications
+                                </span>
+
+                                <strong>
+                                    {
+                                        applications.length
+                                    }
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>
+                                    In review
+                                </span>
+
+                                <strong>
+                                    {
+                                        applicationStats.review
+                                    }
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>
+                                    Interviews
+                                </span>
+
+                                <strong>
+                                    {
+                                        applicationStats.interview
+                                    }
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>
+                                    Selected
+                                </span>
+
+                                <strong>
+                                    {
+                                        applicationStats.selected
+                                    }
+                                </strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* RESUME */}
+
+                    <section className="dashboard-side-card dashboard-resume-card">
+                        <div className="dashboard-resume-icon">
+                            <FileText size={19} />
+                        </div>
+
+                        <div>
+                            <span>
+                                RESUME
+                            </span>
+
                             <h3>
-                                Your application journey
-                                starts here
+                                {resume
+                                    ? "Resume ready"
+                                    : "Resume missing"}
                             </h3>
 
                             <p>
-                                Apply to opportunities and
-                                track every stage from this
-                                workspace.
-                            </p>
-
-                            <Link
-                                to="/student/jobs"
-                                className="secondary-button"
-                            >
-                                Find opportunities
-                            </Link>
-
-                        </div>
-                    ) : (
-                        <div className="dashboard-application-list">
-
-                            {recentApplications.map(
-                                (application) => {
-
-                                    const title =
-                                        application.jobTitle ||
-                                        application.job?.title ||
-                                        "Job opportunity";
-
-                                    const company =
-                                        application.companyName ||
-                                        application.company?.name ||
-                                        "Company";
-
-                                    const status =
-                                        application.status ||
-                                        "APPLIED";
-
-                                    const date =
-                                        application.appliedAt ||
-                                        application.createdAt;
-
-                                    return (
-                                        <Link
-                                            key={
-                                                application.id
-                                            }
-                                            to={`/student/applications/${application.id}`}
-                                            className="dashboard-application-row"
-                                        >
-
-                                            <div className="dashboard-company-logo">
-                                                {company
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </div>
-
-                                            <div className="dashboard-application-info">
-
-                                                <strong>
-                                                    {title}
-                                                </strong>
-
-                                                <span>
-                                                    {company}
-                                                </span>
-
-                                            </div>
-
-                                            <div className="dashboard-application-date">
-                                                <CalendarIcon />
-                                                {formatDate(
-                                                    date
-                                                )}
-                                            </div>
-
-                                            <span
-                                                className={`dashboard-status ${getStatusClass(
-                                                    status
-                                                )}`}
-                                            >
-                                                {formatStatus(
-                                                    status
-                                                )}
-                                            </span>
-
-                                            <ChevronRight
-                                                size={16}
-                                                className="dashboard-row-arrow"
-                                            />
-
-                                        </Link>
-                                    );
-                                }
-                            )}
-
-                        </div>
-                    )}
-
-                </div>
-
-                {/* READINESS */}
-
-                <div className="dashboard-surface dashboard-readiness">
-
-                    <div className="dashboard-section-header">
-
-                        <div>
-                            <span className="eyebrow">
-                                APPLICATION READINESS
-                            </span>
-
-                            <h2>
-                                Ready when the right role
-                                appears
-                            </h2>
-                        </div>
-
-                    </div>
-
-                    <div className="readiness-score">
-
-                        <div
-                            className="readiness-circle"
-                            style={{
-                                "--progress":
-                                    `${profileProgress * 3.6}deg`,
-                            }}
-                        >
-                            <div>
-                                <strong>
-                                    {profileProgress}%
-                                </strong>
-
-                                <span>
-                                    ready
-                                </span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <strong>
-                                Candidate readiness
-                            </strong>
-
-                            <p>
-                                Keep the basics complete
-                                before submitting applications.
+                                {resume
+                                    ? "Keep it updated before applying."
+                                    : "Add your resume to strengthen applications."}
                             </p>
                         </div>
-
-                    </div>
-
-                    <div className="readiness-list">
-
-                        <div className="readiness-item">
-                            <CheckCircle2
-                                size={17}
-                            />
-
-                            <div>
-                                <strong>
-                                    Account profile
-                                </strong>
-
-                                <span>
-                                    {user?.name &&
-                                    user?.email
-                                        ? "Complete"
-                                        : "Needs attention"}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="readiness-item">
-                            {resume ? (
-                                <CheckCircle2
-                                    size={17}
-                                />
-                            ) : (
-                                <Plus
-                                    size={17}
-                                />
-                            )}
-
-                            <div>
-                                <strong>
-                                    Resume
-                                </strong>
-
-                                <span>
-                                    {resume
-                                        ? "Uploaded and ready"
-                                        : "Upload a PDF"}
-                                </span>
-                            </div>
-
-                            {!resume && (
-                                <Link
-                                    to="/student/resume"
-                                    className="readiness-action"
-                                >
-                                    Add
-                                </Link>
-                            )}
-                        </div>
-
-                        <div className="readiness-item">
-                            <CheckCircle2
-                                size={17}
-                            />
-
-                            <div>
-                                <strong>
-                                    Job discovery
-                                </strong>
-
-                                <span>
-                                    {recommendedJobs.length > 0
-                                        ? `${recommendedJobs.length} fresh opportunities`
-                                        : "Explore opportunities"}
-                                </span>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-            {/* ================================================= */}
-            {/* RECOMMENDED JOBS */}
-            {/* ================================================= */}
-
-            <section className="dashboard-surface dashboard-recommendations">
-
-                <div className="dashboard-section-header">
-
-                    <div>
-                        <span className="eyebrow">
-                            RECOMMENDED FOR YOU
-                        </span>
-
-                        <h2>
-                            Fresh opportunities
-                        </h2>
-
-                        <p className="dashboard-section-description">
-                            Recently published roles from
-                            your CampusOS opportunity pool.
-                        </p>
-                    </div>
-
-                    <Link
-                        to="/student/jobs"
-                        className="dashboard-view-link"
-                    >
-                        Discover all
-                        <ArrowRight size={14} />
-                    </Link>
-
-                </div>
-
-                {recommended.length === 0 ? (
-                    <div className="dashboard-empty compact">
-                        <BriefcaseBusiness
-                            size={24}
-                        />
-
-                        <h3>
-                            No new recommendations
-                        </h3>
-
-                        <p>
-                            Explore the complete jobs
-                            marketplace to discover your next role.
-                        </p>
 
                         <Link
-                            to="/student/jobs"
-                            className="secondary-button"
+                            to="/student/resume"
+                            aria-label="Manage resume"
                         >
-                            Browse jobs
+                            <ChevronRight
+                                size={18}
+                            />
                         </Link>
-                    </div>
-                ) : (
-                    <div className="dashboard-job-grid">
+                    </section>
 
-                        {recommended.map(
-                            (job) => {
+                    {/* REFRESH */}
 
-                                const company =
-                                    job.companyName ||
-                                    job.company?.name ||
-                                    "Company";
-
-                                return (
-                                    <Link
-                                        key={
-                                            job.id
-                                        }
-                                        to={`/student/jobs/${job.id}`}
-                                        className="dashboard-job-card"
-                                    >
-
-                                        <div className="dashboard-job-top">
-
-                                            <div className="dashboard-company-logo">
-                                                {company
-                                                    .charAt(0)
-                                                    .toUpperCase()}
-                                            </div>
-
-                                            <span className="dashboard-job-arrow">
-                                                <ArrowRight
-                                                    size={15}
-                                                />
-                                            </span>
-
-                                        </div>
-
-                                        <span className="dashboard-job-company">
-                                            {company}
-                                        </span>
-
-                                        <h3>
-                                            {job.title}
-                                        </h3>
-
-                                        <div className="dashboard-job-meta">
-
-                                            <span>
-                                                {job.location ||
-                                                    "Remote"}
-                                            </span>
-
-                                            <span>
-                                                {formatJobType(
-                                                    job.jobType
-                                                )}
-                                            </span>
-
-                                            <span>
-                                                {formatJobType(
-                                                    job.workMode
-                                                )}
-                                            </span>
-
-                                        </div>
-
-                                        <div className="dashboard-job-footer">
-
-                                            <strong>
-                                                {formatSalary(
-                                                    job.salaryMin,
-                                                    job.salaryMax
-                                                )}
-                                            </strong>
-
-                                            <span>
-                                                {formatRelativeDate(
-                                                    job.createdAt
-                                                )}
-                                            </span>
-
-                                        </div>
-
-                                    </Link>
-                                );
+                    <button
+                        type="button"
+                        className="dashboard-refresh"
+                        onClick={() =>
+                            loadDashboard(true)
+                        }
+                        disabled={refreshing}
+                    >
+                        <RefreshCw
+                            size={14}
+                            className={
+                                refreshing
+                                    ? "is-spinning"
+                                    : ""
                             }
-                        )}
-
-                    </div>
-                )}
-
-            </section>
-
-            {/* ================================================= */}
-            {/* QUICK ACTIONS */}
-            {/* ================================================= */}
-
-            <section className="dashboard-quick-grid">
-
-                <Link
-                    to="/student/jobs"
-                    className="dashboard-quick-card"
-                >
-                    <div className="dashboard-quick-icon">
-                        <BriefcaseBusiness
-                            size={19}
                         />
-                    </div>
 
-                    <div>
-                        <strong>
-                            Discover jobs
-                        </strong>
-
-                        <span>
-                            Search current opportunities
-                        </span>
-                    </div>
-
-                    <ArrowRight size={16} />
-                </Link>
-
-                <Link
-                    to="/student/saved-jobs"
-                    className="dashboard-quick-card"
-                >
-                    <div className="dashboard-quick-icon">
-                        <Bookmark size={19} />
-                    </div>
-
-                    <div>
-                        <strong>
-                            Saved opportunities
-                        </strong>
-
-                        <span>
-                            Revisit roles worth pursuing
-                        </span>
-                    </div>
-
-                    <ArrowRight size={16} />
-                </Link>
-
-                <Link
-                    to="/student/profile"
-                    className="dashboard-quick-card"
-                >
-                    <div className="dashboard-quick-icon">
-                        <UserRound size={19} />
-                    </div>
-
-                    <div>
-                        <strong>
-                            Candidate profile
-                        </strong>
-
-                        <span>
-                            Keep your details recruiter-ready
-                        </span>
-                    </div>
-
-                    <ArrowRight size={16} />
-                </Link>
-
-                <Link
-                    to="/student/notifications"
-                    className="dashboard-quick-card"
-                >
-                    <div className="dashboard-quick-icon">
-                        <Bell size={19} />
-                    </div>
-
-                    <div>
-                        <strong>
-                            Notifications
-                        </strong>
-
-                        <span>
-                            Stay updated on your activity
-                        </span>
-                    </div>
-
-                    <ArrowRight size={16} />
-                </Link>
-
+                        {refreshing
+                            ? "Refreshing..."
+                            : "Refresh workspace"}
+                    </button>
+                </aside>
             </section>
-
         </div>
-    );
-}
-
-function CalendarIcon() {
-    return (
-        <span className="mini-calendar-icon">
-            <Clock3 size={12} />
-        </span>
     );
 }
 
