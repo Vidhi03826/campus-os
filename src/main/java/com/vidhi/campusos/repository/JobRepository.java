@@ -3,6 +3,10 @@ package com.vidhi.campusos.repository;
 import com.vidhi.campusos.entity.Job;
 import com.vidhi.campusos.entity.JobStatus;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -18,8 +22,24 @@ public interface JobRepository
             Long companyId
     );
 
+    @EntityGraph(attributePaths = {
+            "company"
+    })
     List<Job> findByCompanyId(
             Long companyId
+    );
+
+    @EntityGraph(attributePaths = {
+            "company"
+    })
+    Optional<Job> findById(Long jobId);
+
+    @EntityGraph(attributePaths = {
+            "company"
+    })
+    Page<Job> findAll(
+            Specification<Job> specification,
+            Pageable pageable
     );
 
     long countByStatus(

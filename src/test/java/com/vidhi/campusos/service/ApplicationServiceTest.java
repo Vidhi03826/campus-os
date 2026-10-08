@@ -80,7 +80,6 @@ class ApplicationServiceTest {
                 );
     }
 
-
     // =========================================================
     // APPLY - SUCCESS
     // =========================================================
@@ -111,6 +110,9 @@ class ApplicationServiceTest {
 
         when(student.getId())
                 .thenReturn(10L);
+
+        when(student.getUser())
+                .thenReturn(studentUser);
 
         when(jobRepository.findById(100L))
                 .thenReturn(Optional.of(job));
@@ -150,6 +152,9 @@ class ApplicationServiceTest {
         when(savedApplication.getJob())
                 .thenReturn(job);
 
+        when(savedApplication.getStudent())
+                .thenReturn(student);
+
         when(savedApplication.getStatus())
                 .thenReturn(ApplicationStatus.APPLIED);
 
@@ -173,7 +178,6 @@ class ApplicationServiceTest {
         verify(applicationStatusHistoryRepository)
                 .save(any(ApplicationStatusHistory.class));
     }
-
 
     // =========================================================
     // APPLY - DUPLICATE APPLICATION
@@ -236,7 +240,6 @@ class ApplicationServiceTest {
         verify(applicationStatusHistoryRepository, never())
                 .save(any(ApplicationStatusHistory.class));
     }
-
 
     // =========================================================
     // UPDATE STATUS - VALID TRANSITION
@@ -335,7 +338,6 @@ class ApplicationServiceTest {
                 );
     }
 
-
     // =========================================================
     // UPDATE STATUS - INVALID TRANSITION
     // =========================================================
@@ -405,7 +407,6 @@ class ApplicationServiceTest {
         verify(applicationStatusHistoryRepository, never())
                 .save(any(ApplicationStatusHistory.class));
     }
-
 
     // =========================================================
     // WITHDRAW - TERMINAL APPLICATION

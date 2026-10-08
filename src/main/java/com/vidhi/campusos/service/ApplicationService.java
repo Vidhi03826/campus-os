@@ -336,6 +336,7 @@ public class ApplicationService {
             );
         }
 
+
         RecruiterProfile recruiter =
                 recruiterProfileRepository
                         .findByUserId(recruiterUser.getId())
@@ -352,7 +353,6 @@ public class ApplicationService {
                                         "Application not found"
                                 )
                         );
-
         Job job = application.getJob();
 
         if (!job.getCompany().getId()
