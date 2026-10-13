@@ -37,3 +37,8 @@ build/
 !.env.example
 
 uploads/
+
+# Local database backups and diagnostic logs
+campus_os_db_backup.sql
+*.log
+startup-debug.txt
