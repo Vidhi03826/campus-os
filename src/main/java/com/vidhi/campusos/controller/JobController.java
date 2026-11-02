@@ -13,7 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
+import com.vidhi.campusos.dto.JobMatchResponse;
+import com.vidhi.campusos.service.JobMatchingService;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -26,8 +27,14 @@ public class JobController {
 
     private final JobService jobService;
 
-    public JobController(JobService jobService) {
+    private final JobMatchingService jobMatchingService;
+
+    public JobController(
+            JobService jobService,
+            JobMatchingService jobMatchingService
+    ) {
         this.jobService = jobService;
+        this.jobMatchingService = jobMatchingService;
     }
 
     // =========================
@@ -70,7 +77,21 @@ public class JobController {
         return jobService.getPublishedJob(jobId);
     }
 
+// =========================
+// AI JOB MATCHING
+// =========================
 
+    @GetMapping("/api/students/me/job-matches")
+    public List<JobMatchResponse> getRecommendedJobs(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+
+        return jobMatchingService.getRecommendedJobs(
+                userDetails,
+                limit
+        );
+    }
     // =========================
     // RECRUITER ENDPOINTS
     // =========================

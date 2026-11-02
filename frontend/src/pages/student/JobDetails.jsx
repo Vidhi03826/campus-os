@@ -1,9 +1,9 @@
+/* eslint-disable react-hooks/purity */
 import { useEffect, useMemo, useState } from "react";
 import {
     ArrowLeft,
     Bookmark,
     BriefcaseBusiness,
-    Building2,
     CalendarDays,
     Check,
     CheckCircle2,
@@ -48,22 +48,22 @@ function formatSalary(min, max) {
 
     const format = (value) => {
         if (value >= 10000000) {
-            return `₹${(value / 10000000).toFixed(1)}Cr`;
+            return `â‚¹${(value / 10000000).toFixed(1)}Cr`;
         }
 
         if (value >= 100000) {
-            return `₹${(value / 100000).toFixed(1)}L`;
+            return `â‚¹${(value / 100000).toFixed(1)}L`;
         }
 
         if (value >= 1000) {
-            return `₹${Math.round(value / 1000)}K`;
+            return `â‚¹${Math.round(value / 1000)}K`;
         }
 
-        return `₹${value}`;
+        return `â‚¹${value}`;
     };
 
     if (min != null && max != null) {
-        return `${format(min)} – ${format(max)}`;
+        return `${format(min)} â€“ ${format(max)}`;
     }
 
     if (min != null) {
@@ -148,7 +148,7 @@ function normalizeList(value) {
 
     if (typeof value === "string") {
         return value
-            .split(/\r?\n|•|;/)
+            .split(/\r?\n|â€¢|;/)
             .map((item) => item.trim())
             .filter(Boolean);
     }
@@ -193,7 +193,7 @@ function getExperienceText(job) {
             return `${min} years`;
         }
 
-        return `${min} – ${max} years`;
+        return `${min} â€“ ${max} years`;
     }
 
     if (min != null) {
@@ -271,10 +271,8 @@ function JobDetails() {
     const [applicationSuccess, setApplicationSuccess] =
         useState(false);
 
-    const companyName = useMemo(
-        () => getJobSkills(job || {}),
-        [job]
-    );
+    const companyName = useMemo(() => getCompanyName(job || {}), [job]);
+    const skills = useMemo(() => getJobSkills(job || {}), [job]);
 
     const responsibilities = useMemo(
         () => getResponsibilities(job || {}),
@@ -412,6 +410,8 @@ function JobDetails() {
 
             await applyToJob(job.id);
 
+            setShowApplyModal(false);
+            setApplicationSuccess(true);
             success(
                 "Your application has been submitted successfully.",
                 "Application submitted"

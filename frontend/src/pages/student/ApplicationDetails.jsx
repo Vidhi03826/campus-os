@@ -494,6 +494,7 @@ export default function ApplicationDetails() {
 
     useEffect(() => {
         if (applicationId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
             loadApplication();
         }
     }, [

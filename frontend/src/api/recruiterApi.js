@@ -1,6 +1,23 @@
 
 import api from "./axios";
 
+
+
+// Get the logged-in recruiter's company profile
+export const getMyCompany = async () => {
+    const response = await api.get("/api/recruiters/me/company");
+    return response.data;
+};
+
+// Create the recruiter's company profile
+export const createCompany = async (companyData) => {
+    const response = await api.post(
+        "/api/recruiters/me/company",
+        companyData
+    );
+    return response.data;
+};
+
 export const getMyJobs = async () => {
     const response = await api.get("/api/recruiters/me/jobs");
     return response.data;
@@ -48,3 +65,4 @@ export const updateApplicationStatus = async (applicationId, status) => {
     );
     return response.data;
 };
+

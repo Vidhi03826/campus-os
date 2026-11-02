@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- reviewed existing component/effect pattern */
 import { createContext, useContext } from "react";
 import { useToast as useToastState } from "../hooks/useToast";
 import ToastContainer from "../components/common/ToastContainer";

@@ -66,11 +66,37 @@ function formatDate(value) {
     });
 }
 
-function getJobId(job) {
+/*
+ * Saved-job responses can contain the actual job inside a nested
+ * "job" object. This helper makes the page work with both:
+ *
+ * {
+ *   id: 1,
+ *   title: "..."
+ * }
+ *
+ * and:
+ *
+ * {
+ *   job: {
+ *      id: 1,
+ *      title: "..."
+ *   }
+ * }
+ */
+function getActualJob(savedJob) {
+    return savedJob?.job ?? savedJob;
+}
+
+function getJobId(savedJob) {
+    const job = getActualJob(savedJob);
+
     return job?.id ?? job?.jobId;
 }
 
-function getCompany(job) {
+function getCompany(savedJob) {
+    const job = getActualJob(savedJob);
+
     return (
         job?.companyName ||
         job?.company?.name ||
@@ -78,7 +104,9 @@ function getCompany(job) {
     );
 }
 
-function getDeadline(job) {
+function getDeadline(savedJob) {
+    const job = getActualJob(savedJob);
+
     return (
         job?.applicationDeadline ||
         job?.deadline ||
@@ -93,10 +121,12 @@ export default function SavedJobs() {
     const [error, setError] = useState("");
     const [search, setSearch] = useState("");
     const [removingId, setRemovingId] = useState(null);
+
     const {
         success: showSuccess,
         error: showError,
     } = useToast();
+
     const loadSavedJobs = async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -131,6 +161,7 @@ export default function SavedJobs() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadSavedJobs();
     }, []);
 
@@ -143,7 +174,8 @@ export default function SavedJobs() {
 
             setJobs((current) =>
                 current.filter(
-                    (job) => String(getJobId(job)) !== String(jobId)
+                    (savedJob) =>
+                        String(getJobId(savedJob)) !== String(jobId)
                 )
             );
 
@@ -170,9 +202,15 @@ export default function SavedJobs() {
 
         if (!query) return jobs;
 
-        return jobs.filter((job) => {
-            const title = String(job?.title || "").toLowerCase();
-            const company = getCompany(job).toLowerCase();
+        return jobs.filter((savedJob) => {
+            const job = getActualJob(savedJob);
+
+            const title = String(
+                job?.title || ""
+            ).toLowerCase();
+
+            const company = getCompany(savedJob).toLowerCase();
+
             const location = String(
                 job?.location || ""
             ).toLowerCase();
@@ -201,6 +239,7 @@ export default function SavedJobs() {
                             key={index}
                         >
                             <div className="saved-skeleton-circle" />
+
                             <div className="saved-skeleton-content">
                                 <div className="saved-skeleton-line" />
                                 <div className="saved-skeleton-line" />
@@ -218,9 +257,7 @@ export default function SavedJobs() {
 
             {/* HEADER */}
             <section className="saved-jobs-header">
-
                 <div className="saved-jobs-heading">
-
                     <span className="eyebrow">
                         YOUR SHORTLIST
                     </span>
@@ -231,11 +268,9 @@ export default function SavedJobs() {
                         Keep the roles that caught your attention
                         close by and revisit them when you're ready.
                     </p>
-
                 </div>
 
                 <div className="saved-jobs-header-actions">
-
                     <div className="saved-jobs-count">
                         <div className="saved-jobs-count-icon">
                             <Bookmark size={18} />
@@ -263,15 +298,12 @@ export default function SavedJobs() {
                             }
                         />
                     </button>
-
                 </div>
-
             </section>
 
             {/* ERROR */}
             {error && (
                 <div className="saved-jobs-alert">
-
                     <div>
                         <strong>Something went wrong</strong>
                         <span>{error}</span>
@@ -283,16 +315,13 @@ export default function SavedJobs() {
                     >
                         Retry
                     </button>
-
                 </div>
             )}
 
             {/* TOOLBAR */}
             {jobs.length > 0 && (
                 <section className="saved-jobs-toolbar">
-
                     <div className="saved-search">
-
                         <Search size={17} />
 
                         <input
@@ -314,7 +343,6 @@ export default function SavedJobs() {
                                 <X size={15} />
                             </button>
                         )}
-
                     </div>
 
                     <span className="saved-results-count">
@@ -323,14 +351,12 @@ export default function SavedJobs() {
                             ? "opportunity"
                             : "opportunities"}
                     </span>
-
                 </section>
             )}
 
             {/* EMPTY */}
             {!error && jobs.length === 0 && (
                 <div className="saved-jobs-empty">
-
                     <div className="saved-jobs-empty-icon">
                         <Bookmark size={28} />
                     </div>
@@ -345,8 +371,8 @@ export default function SavedJobs() {
 
                     <p>
                         Save interesting jobs while exploring
-                        opportunities and come back when you're
-                        ready to apply.
+                        opportunities and come back to them
+                        when you're ready to apply.
                     </p>
 
                     <Link
@@ -357,7 +383,6 @@ export default function SavedJobs() {
                         Explore opportunities
                         <ChevronRight size={16} />
                     </Link>
-
                 </div>
             )}
 
@@ -366,7 +391,6 @@ export default function SavedJobs() {
                 jobs.length > 0 &&
                 filteredJobs.length === 0 && (
                     <div className="saved-jobs-empty saved-jobs-no-results">
-
                         <div className="saved-jobs-empty-icon">
                             <Search size={25} />
                         </div>
@@ -385,25 +409,23 @@ export default function SavedJobs() {
                         >
                             Clear search
                         </button>
-
                     </div>
                 )}
 
             {/* LIST */}
             {!error && filteredJobs.length > 0 && (
                 <div className="saved-jobs-list">
-
-                    {filteredJobs.map((job) => {
-                        const id = getJobId(job);
-                        const company = getCompany(job);
-                        const deadline = getDeadline(job);
+                    {filteredJobs.map((savedJob) => {
+                        const job = getActualJob(savedJob);
+                        const id = getJobId(savedJob);
+                        const company = getCompany(savedJob);
+                        const deadline = getDeadline(savedJob);
 
                         return (
                             <article
                                 className="saved-job-card"
                                 key={id}
                             >
-
                                 <div className="saved-job-logo">
                                     {company
                                         .charAt(0)
@@ -411,7 +433,6 @@ export default function SavedJobs() {
                                 </div>
 
                                 <div className="saved-job-main">
-
                                     <div className="saved-job-company">
                                         {company}
                                     </div>
@@ -420,20 +441,19 @@ export default function SavedJobs() {
                                         to={`/student/jobs/${id}`}
                                         className="saved-job-title"
                                     >
-                                        {job.title ||
+                                        {job?.title ||
                                             "Untitled opportunity"}
                                     </Link>
 
                                     <div className="saved-job-meta">
-
-                                        {job.location && (
+                                        {job?.location && (
                                             <span>
                                                 <MapPin size={14} />
                                                 {job.location}
                                             </span>
                                         )}
 
-                                        {job.jobType && (
+                                        {job?.jobType && (
                                             <span>
                                                 <BriefcaseBusiness
                                                     size={14}
@@ -444,19 +464,17 @@ export default function SavedJobs() {
                                             </span>
                                         )}
 
-                                        {job.workMode && (
+                                        {job?.workMode && (
                                             <span>
                                                 {formatEnum(
                                                     job.workMode
                                                 )}
                                             </span>
                                         )}
-
                                     </div>
 
                                     <div className="saved-job-tags">
-
-                                        {job.experienceMin != null && (
+                                        {job?.experienceMin != null && (
                                             <span>
                                                 {job.experienceMin}+
                                                 {" "}yrs experience
@@ -465,8 +483,8 @@ export default function SavedJobs() {
 
                                         <span>
                                             {formatSalary(
-                                                job.salaryMin,
-                                                job.salaryMax
+                                                job?.salaryMin,
+                                                job?.salaryMax
                                             )}
                                         </span>
 
@@ -477,13 +495,10 @@ export default function SavedJobs() {
                                                 {formatDate(deadline)}
                                             </span>
                                         )}
-
                                     </div>
-
                                 </div>
 
                                 <div className="saved-job-actions">
-
                                     <Link
                                         to={`/student/jobs/${id}`}
                                         className="saved-view-button"
@@ -501,7 +516,10 @@ export default function SavedJobs() {
                                         disabled={
                                             removingId === id
                                         }
-                                        aria-label={`Remove ${job.title} from saved jobs`}
+                                        aria-label={`Remove ${
+                                            job?.title ||
+                                            "this job"
+                                        } from saved jobs`}
                                         title="Remove from saved jobs"
                                     >
                                         {removingId === id ? (
@@ -513,16 +531,12 @@ export default function SavedJobs() {
                                             <Trash2 size={16} />
                                         )}
                                     </button>
-
                                 </div>
-
                             </article>
                         );
                     })}
-
                 </div>
             )}
-
         </div>
     );
 }

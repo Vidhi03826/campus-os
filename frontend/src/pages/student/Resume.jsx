@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import "../../styles/student-resume.css";
 import {
     AlertCircle,
     CheckCircle2,
@@ -15,6 +16,8 @@ import {
     deleteResume,
     downloadResume,
     getResumeMetadata,
+    getJobs,
+    analyzeResumeForJob,
     uploadResume,
 } from "../../api/studentApi";
 
@@ -38,6 +41,10 @@ function Resume() {
     const inputRef = useRef(null);
     const { success: showSuccess, error: showError } = useToast();
     const [resume, setResume] = useState(null);
+    const [jobs, setJobs] = useState([]);
+    const [selectedJobId, setSelectedJobId] = useState("");
+    const [analysis, setAnalysis] = useState(null);
+    const [analyzing, setAnalyzing] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -73,8 +80,44 @@ function Resume() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         loadResume();
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getJobs({ page: 0, size: 100, sort: "createdAt,desc" })
+            .then((response) => {
+                const list = Array.isArray(response)
+                    ? response
+                    : response?.content || response?.jobs || response?.data || [];
+                if (!cancelled) setJobs(list);
+            })
+            .catch(() => {
+                if (!cancelled) setJobs([]);
+            });
+        return () => { cancelled = true; };
+    }, []);
+
+    const handleAnalyzeResume = async () => {
+        if (!selectedJobId) {
+            setError("Choose a job to analyze your resume against.");
+            return;
+        }
+        try {
+            setAnalyzing(true);
+            setError("");
+            const result = await analyzeResumeForJob(selectedJobId);
+            setAnalysis(result);
+        } catch (err) {
+            const message = err?.response?.data?.message ||
+                "Unable to analyze this resume. Ensure your PDF is readable and try again.";
+            setError(message);
+            showError(message);
+        } finally {
+            setAnalyzing(false);
+        }
+    };
 
     const validateFile = (file) => {
         if (!file) {
@@ -476,6 +519,49 @@ function Resume() {
                         onChange={handleInputChange}
                         hidden
                     />
+                </section>
+            )}
+
+            {/* RESUME INTELLIGENCE */}
+            {resume && (
+                <section className="resume-intelligence-card">
+                    <div className="resume-intelligence-heading">
+                        <div className="resume-intelligence-icon"><FileCheck2 size={21} /></div>
+                        <div>
+                            <span className="eyebrow">RESUME INTELLIGENCE</span>
+                            <h2>See how your resume fits a role</h2>
+                            <p>Compare extractable resume text with the selected job's listed skills.</p>
+                        </div>
+                    </div>
+                    <div className="resume-analysis-controls">
+                        <label htmlFor="resume-analysis-job">Choose a published job</label>
+                        <select id="resume-analysis-job" value={selectedJobId} onChange={(event) => { setSelectedJobId(event.target.value); setAnalysis(null); }}>
+                            <option value="">Select a role to analyze</option>
+                            {jobs.map((job) => (
+                                <option value={job.id} key={job.id}>{job.title} — {job.companyName || job.company?.name || "Company"}</option>
+                            ))}
+                        </select>
+                        <button className="primary-button" onClick={handleAnalyzeResume} disabled={analyzing || !selectedJobId}>
+                            <FileCheck2 size={16} /> {analyzing ? "Analyzing resume..." : "Analyze resume"}
+                        </button>
+                    </div>
+                    {analysis && (
+                        <div className="resume-analysis-results">
+                            <div className="resume-analysis-score">
+                                <strong>{analysis.matchScore}%</strong><span>skill alignment</span>
+                            </div>
+                            <div className="resume-analysis-detail">
+                                <h3>{analysis.jobTitle}</h3>
+                                <p>{analysis.companyName} · {analysis.matchedSkills?.length || 0} of {analysis.requiredJobSkills || 0} detected job skills found in your resume</p>
+                                <div className="resume-analysis-skill-groups">
+                                    <div><strong>Skills found</strong><div>{(analysis.matchedSkills || []).length ? analysis.matchedSkills.map((skill) => <span className="found" key={skill}>{skill}</span>) : <span className="muted">No catalog skills matched yet.</span>}</div></div>
+                                    <div><strong>Skills to consider</strong><div>{(analysis.missingSkills || []).length ? analysis.missingSkills.map((skill) => <span className="missing" key={skill}>{skill}</span>) : <span className="muted">No missing catalog skills detected.</span>}</div></div>
+                                </div>
+                                <ul>{(analysis.recommendations || []).map((item, index) => <li key={index}>{item}</li>)}</ul>
+                                <p className="resume-analysis-disclaimer">This is a rule-based skill comparison, not an automated hiring decision. Only include skills you genuinely have.</p>
+                            </div>
+                        </div>
+                    )}
                 </section>
             )}
 

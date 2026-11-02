@@ -1,3 +1,4 @@
+
 package com.vidhi.campusos.service;
 
 import com.vidhi.campusos.dto.LoginRequest;
@@ -46,27 +47,39 @@ public class AuthService {
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
-
-        String email = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         if (userRepository.existsByEmail(email)) {
-
             throw new ResourceAlreadyExistsException(
                     "An account with this email already exists"
             );
         }
 
-        String encodedPassword =
-                passwordEncoder.encode(request.password());
+        UserRole role;
+        try {
+            role = UserRole.valueOf(
+                    request.role().trim().toUpperCase(Locale.ROOT)
+            );
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw new IllegalArgumentException(
+                    "Account type must be STUDENT or RECRUITER"
+            );
+        }
 
-        User user = new User(
-                request.name().trim(),
-                email,
-                encodedPassword,
-                UserRole.STUDENT
-        );
+        if (role != UserRole.STUDENT && role != UserRole.RECRUITER) {
+            throw new IllegalArgumentException(
+                    "Account type must be STUDENT or RECRUITER"
+            );
+        }
+
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+        User user = User.builder()
+                .name(request.name().trim())
+                .email(email)
+                .password(encodedPassword)
+                .role(role)
+                .build();
 
         User savedUser = userRepository.save(user);
 
@@ -79,45 +92,32 @@ public class AuthService {
     }
 
     public TokenResponse login(LoginRequest request) {
-
-        String email = request.email()
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new InvalidCredentialsException(
-                                "Invalid email or password"
-                        )
-                );
+                .orElseThrow(() -> new InvalidCredentialsException(
+                        "Invalid email or password"
+                ));
 
         if (!user.isActive()) {
-
-            throw new AccountLockedException(
-                    "Account is inactive"
-            );
+            throw new AccountLockedException("Account is inactive");
         }
 
         if (user.isAccountLocked()) {
-
             throw new AccountLockedException(
                     "Account is locked due to repeated failed login attempts"
             );
         }
 
         try {
-
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             email,
                             request.password()
                     )
             );
-
         } catch (Exception exception) {
-
             handleFailedLogin(user);
-
             throw new InvalidCredentialsException(
                     "Invalid email or password"
             );
@@ -126,29 +126,20 @@ public class AuthService {
         user.setFailedLoginAttempts(0);
         userRepository.save(user);
 
-        String accessToken =
-                jwtService.generateToken(
-                        user.getEmail(),
-                        Set.of(user.getRole().name())
-                );
+        String accessToken = jwtService.generateToken(
+                user.getEmail(),
+                Set.of(user.getRole().name())
+        );
 
         String refreshToken =
-                refreshTokenService.createRefreshToken(
-                        user.getEmail()
-                );
+                refreshTokenService.createRefreshToken(user.getEmail());
 
-        return new TokenResponse(
-                accessToken,
-                refreshToken
-        );
+        return new TokenResponse(accessToken, refreshToken);
     }
 
     @Transactional
-    private void handleFailedLogin(User user) {
-
-        int attempts =
-                user.getFailedLoginAttempts() + 1;
-
+    public void handleFailedLogin(User user) {
+        int attempts = user.getFailedLoginAttempts() + 1;
         user.setFailedLoginAttempts(attempts);
 
         if (attempts >= 5) {
@@ -159,57 +150,25 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse refreshAccessToken(
-            String refreshTokenValue
-    ) {
-
-        /*
-         * Verification obtains a PESSIMISTIC_WRITE lock on the
-         * corresponding refresh-token row.
-         */
+    public TokenResponse refreshAccessToken(String refreshTokenValue) {
         RefreshToken oldRefreshToken =
-                refreshTokenService.verifyRefreshToken(
-                        refreshTokenValue
-                );
+                refreshTokenService.verifyRefreshToken(refreshTokenValue);
 
-        User user =
-                oldRefreshToken.getUser();
+        User user = oldRefreshToken.getUser();
 
-        /*
-         * Rotate the old token.
-         *
-         * Because this method is transactional and the old row
-         * is already locked, a second concurrent refresh request
-         * cannot successfully reuse the same token.
-         */
         String newRefreshToken =
-                refreshTokenService.rotateRefreshToken(
-                        oldRefreshToken
-                );
+                refreshTokenService.rotateRefreshToken(oldRefreshToken);
 
-        /*
-         * Generate the new access token after successful rotation.
-         *
-         * If anything fails inside this transaction, the database
-         * changes can roll back together.
-         */
-        String accessToken =
-                jwtService.generateToken(
-                        user.getEmail(),
-                        Set.of(user.getRole().name())
-                );
-
-        return new TokenResponse(
-                accessToken,
-                newRefreshToken
+        String accessToken = jwtService.generateToken(
+                user.getEmail(),
+                Set.of(user.getRole().name())
         );
+
+        return new TokenResponse(accessToken, newRefreshToken);
     }
 
     @Transactional
     public void logout(String refreshTokenValue) {
-
-        refreshTokenService.revoke(
-                refreshTokenValue
-        );
+        refreshTokenService.revoke(refreshTokenValue);
     }
 }

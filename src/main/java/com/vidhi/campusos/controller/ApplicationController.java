@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
+import com.vidhi.campusos.dto.StudentProfileResponse;
 import java.util.List;
 
 @RestController
@@ -99,6 +99,21 @@ public class ApplicationController {
 
         return ResponseEntity.ok(
                 applicationService.getMyApplicationHistory(
+                        userDetails,
+                        applicationId
+                )
+        );
+    }
+
+    @GetMapping(
+            "/recruiters/me/applications/{applicationId}/candidate-profile"
+    )
+    public ResponseEntity<StudentProfileResponse> getCandidateProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long applicationId
+    ) {
+        return ResponseEntity.ok(
+                applicationService.getCandidateProfile(
                         userDetails,
                         applicationId
                 )

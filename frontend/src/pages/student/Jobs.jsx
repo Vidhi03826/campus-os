@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 
 import {
     getJobs,
+    getJobMatches,
     saveJob,
     unsaveJob,
 } from "../../api/studentApi";
@@ -153,7 +154,7 @@ function getErrorMessage(error, fallback) {
     );
 }
 
-function JobCard({ job, onSave, savingId }) {
+function JobCard({ job, onSave, savingId, matchScore }) {
     const companyName =
         job.companyName ||
         job.company?.name ||
@@ -182,6 +183,12 @@ function JobCard({ job, onSave, savingId }) {
                 <div className="sj-company-avatar">
                     {getInitials(companyName)}
                 </div>
+
+                {typeof matchScore === "number" && (
+                    <span className="sj-match-badge" title="Match based on skills in your profile">
+                        <span>✦</span> {matchScore}% match
+                    </span>
+                )}
 
                 <button
                     type="button"
@@ -456,6 +463,7 @@ function FilterContent({
 
 function Jobs() {
     const [jobs, setJobs] = useState([]);
+    const [jobMatchScores, setJobMatchScores] = useState({});
 
     const [searchInput, setSearchInput] = useState("");
     const [locationInput, setLocationInput] = useState("");
@@ -535,6 +543,7 @@ function Jobs() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         loadJobs();
     }, [
         page,
@@ -544,6 +553,22 @@ function Jobs() {
         jobType,
         workMode,
     ]);
+
+    useEffect(() => {
+        let cancelled = false;
+        getJobMatches(50)
+            .then((matches) => {
+                if (cancelled) return;
+                const entries = Array.isArray(matches) ? matches : [];
+                setJobMatchScores(Object.fromEntries(
+                    entries.map((item) => [item.id, item.matchScore])
+                ));
+            })
+            .catch(() => {
+                if (!cancelled) setJobMatchScores({});
+            });
+        return () => { cancelled = true; };
+    }, []);
 
     const activeFilterCount = useMemo(() => {
         return [
@@ -933,6 +958,7 @@ function Jobs() {
                                             job={job}
                                             onSave={handleSave}
                                             savingId={savingId}
+                                            matchScore={jobMatchScores[job.id]}
                                         />
                                     ))}
                                 </div>

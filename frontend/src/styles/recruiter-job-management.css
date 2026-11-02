@@ -1,0 +1,162 @@
+/* CampusOS Recruiter Job Management — premium visual layer
+   Keep recruiter.css imported by the existing components. This file is additive. */
+.recruiter-page {
+    --rjm-ink: #17213d;
+    --rjm-muted: #77839d;
+    --rjm-violet: #705cf4;
+    --rjm-blue: #4388f5;
+    position: relative;
+    isolation: isolate;
+    color: var(--rjm-ink);
+}
+.recruiter-page::before {
+    position: absolute;
+    z-index: -1;
+    top: -90px;
+    right: -7%;
+    width: min(520px, 55vw);
+    height: 360px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(116, 94, 255, .12), transparent 70%);
+    content: "";
+    pointer-events: none;
+}
+.recruiter-form-back a {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    border: 1px solid #e8e9f4;
+    border-radius: 12px;
+    background: rgba(255,255,255,.8);
+    color: #6658d9;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.recruiter-form-back a:hover { transform: translateX(-3px); border-color: #cfc9ff; box-shadow: 0 8px 22px rgba(67,70,150,.09); }
+.recruiter-form-heading {
+    position: relative;
+    overflow: hidden;
+    margin: 22px 0 26px;
+    padding: clamp(25px, 4vw, 42px);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 25px;
+    background: radial-gradient(circle at 88% 10%, rgba(153,137,255,.5), transparent 30%), linear-gradient(120deg,#171b43 0%,#302a70 55%,#3c63a7 100%);
+    box-shadow: 0 22px 55px rgba(40,42,100,.17);
+    color: #fff;
+}
+.recruiter-form-heading::after {
+    position: absolute;
+    right: -70px;
+    bottom: -180px;
+    width: 330px;
+    height: 330px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 50%;
+    box-shadow: 0 0 0 32px rgba(255,255,255,.035), 0 0 0 68px rgba(255,255,255,.025);
+    content: "";
+    pointer-events: none;
+}
+.recruiter-form-heading .recruiter-eyebrow { color: #c9c1ff; letter-spacing: 1.8px; }
+.recruiter-form-heading h1 { position: relative; z-index: 1; max-width: 720px; margin: 13px 0 9px; color: #fff; font-size: clamp(29px,4vw,43px); font-weight: 800; letter-spacing: -1.7px; line-height: 1.12; }
+.recruiter-form-heading p { position: relative; z-index: 1; max-width: 610px; margin: 0; color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.7; }
+.recruiter-form { display: grid; gap: 20px; max-width: 980px; margin: 0 auto; }
+.recruiter-form-section {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(22px,3vw,32px);
+    border: 1px solid #e9ebf5;
+    border-radius: 22px;
+    background: rgba(255,255,255,.94);
+    box-shadow: 0 12px 34px rgba(34,45,94,.055);
+    transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+    animation: rjm-enter .55s both;
+}
+.recruiter-form-section:hover { border-color: #d9d4ff; box-shadow: 0 18px 42px rgba(55,57,125,.09); }
+.recruiter-form-section-heading { display: flex; align-items: center; gap: 15px; margin-bottom: 26px; }
+.recruiter-form-step {
+    display: grid;
+    flex: 0 0 43px;
+    width: 43px;
+    height: 43px;
+    place-items: center;
+    border: 1px solid #e4e0ff;
+    border-radius: 14px;
+    background: linear-gradient(145deg,#f3f0ff,#edf4ff);
+    color: #6858e4;
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: inset 0 1px 0 #fff;
+}
+.recruiter-form-section-heading h2 { margin: 0 0 5px; color: #202a48; font-size: 18px; font-weight: 800; letter-spacing: -.45px; }
+.recruiter-form-section-heading p { margin: 0; color: #8791a8; font-size: 12px; line-height: 1.6; }
+.recruiter-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 21px 18px; }
+.recruiter-field { min-width: 0; }
+.recruiter-field label { display: block; margin-bottom: 9px; color: #39445f; font-size: 12px; font-weight: 750; }
+.recruiter-field label span { color: #e35c78; }
+.recruiter-field input, .recruiter-field select, .recruiter-field textarea {
+    display: block;
+    width: 100%;
+    min-height: 47px;
+    padding: 12px 14px;
+    border: 1px solid #e2e6f0;
+    border-radius: 12px;
+    outline: none;
+    background: #fafbff;
+    color: #26314e;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.recruiter-field textarea { min-height: 150px; resize: vertical; }
+.recruiter-field input::placeholder, .recruiter-field textarea::placeholder { color: #a5aec0; }
+.recruiter-field input:focus, .recruiter-field select:focus, .recruiter-field textarea:focus { border-color: #897af5; background: #fff; box-shadow: 0 0 0 4px rgba(112,92,244,.11); }
+.recruiter-field small { display: block; margin-top: 7px; color: #98a1b3; font-size: 10px; }
+.recruiter-field--full { grid-column: 1/-1; }
+.recruiter-alert--error { border-radius: 13px; box-shadow: 0 8px 22px rgba(180,54,79,.07); }
+.recruiter-form-footer {
+    position: sticky;
+    z-index: 5;
+    bottom: 14px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 3px;
+    padding: 15px;
+    border: 1px solid rgba(225,228,242,.9);
+    border-radius: 18px;
+    background: rgba(255,255,255,.88);
+    box-shadow: 0 12px 35px rgba(35,43,91,.12);
+    backdrop-filter: blur(18px);
+}
+.recruiter-form-footer .recruiter-action-button, .recruiter-form-footer .recruiter-primary-button { min-height: 45px; border-radius: 12px; font-weight: 750; transition: transform .2s ease, box-shadow .2s ease; }
+.recruiter-form-footer .recruiter-primary-button { background: linear-gradient(110deg,#705ce9,#477fe9); box-shadow: 0 9px 20px rgba(91,89,220,.23); }
+.recruiter-form-footer .recruiter-primary-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 13px 25px rgba(91,89,220,.3); }
+.recruiter-form-footer .recruiter-action-button:hover { transform: translateY(-2px); }
+.recruiter-primary-button:focus-visible, .recruiter-action-button:focus-visible, .recruiter-form-back a:focus-visible { outline: 3px solid rgba(112,92,244,.3); outline-offset: 3px; }
+.recruiter-job-card { border: 1px solid #e8eaf4; border-radius: 19px; background: rgba(255,255,255,.95); box-shadow: 0 8px 24px rgba(34,45,94,.045); transition: transform .23s ease, box-shadow .23s ease, border-color .23s ease; }
+.recruiter-job-card:hover { transform: translateY(-3px); border-color: #d8d2ff; box-shadow: 0 17px 36px rgba(50,55,125,.1); }
+.recruiter-job-symbol { border-radius: 14px; background: linear-gradient(145deg,#eeeaff,#eaf3ff); color: #6859e6; }
+.recruiter-page-heading h1 { letter-spacing: -1.2px; }
+.recruiter-stat-card { border: 1px solid #e9eaf4; border-radius: 18px; box-shadow: 0 8px 24px rgba(34,45,94,.045); transition: transform .22s ease, box-shadow .22s ease; }
+.recruiter-stat-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(50,55,125,.09); }
+.recruiter-listing-panel { border: 1px solid #e8eaf4; border-radius: 21px; box-shadow: 0 12px 32px rgba(34,45,94,.055); }
+.recruiter-search input:focus-visible { outline: 3px solid rgba(112,92,244,.16); outline-offset: 2px; }
+.recruiter-form-loading { gap: 16px; }
+.recruiter-job-skeleton { border-radius: 18px; background: linear-gradient(90deg,#f0f1f8 25%,#fafaff 45%,#f0f1f8 65%); background-size: 220% 100%; animation: rjm-shimmer 1.5s ease-in-out infinite; }
+@keyframes rjm-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rjm-shimmer { to { background-position-x: -220%; } }
+@media (max-width: 680px) {
+    .recruiter-form-heading { border-radius: 19px; }
+    .recruiter-form-grid { grid-template-columns: 1fr; gap: 17px; }
+    .recruiter-field--full { grid-column: auto; }
+    .recruiter-form-section { padding: 21px 17px; border-radius: 18px; }
+    .recruiter-form-footer { bottom: 8px; flex-direction: column-reverse; align-items: stretch; }
+    .recruiter-form-footer > * { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .recruiter-page *, .recruiter-page *::before, .recruiter-page *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

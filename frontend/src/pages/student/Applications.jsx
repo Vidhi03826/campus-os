@@ -71,6 +71,7 @@ function Applications() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         loadApplications();
     }, []);
 

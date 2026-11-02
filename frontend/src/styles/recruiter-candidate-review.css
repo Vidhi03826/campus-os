@@ -1,0 +1,375 @@
+/* CampusOS — premium recruiter candidate-review drawer
+   Visual-only layer. Keeps the existing JSX hooks and all workflow behaviour. */
+
+.recruiter-page .ra-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    justify-content: flex-end;
+    padding: 14px;
+    background: rgba(10, 15, 38, .62);
+    backdrop-filter: blur(9px);
+    -webkit-backdrop-filter: blur(9px);
+    animation: ra-review-fade .22s ease both;
+}
+
+.recruiter-page .ra-drawer {
+    display: flex;
+    flex-direction: column;
+    width: min(620px, 100%);
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .72);
+    border-radius: 25px;
+    background: #f7f8ff;
+    box-shadow: 0 28px 90px rgba(5, 10, 35, .34);
+    animation: ra-review-slide .32s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.recruiter-page .ra-drawer-header {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 25px 28px 23px;
+    color: #fff;
+    background:
+            radial-gradient(ellipse at 88% 0%, rgba(153, 139, 255, .44), transparent 42%),
+            radial-gradient(ellipse at 0% 100%, rgba(57, 139, 255, .24), transparent 42%),
+            linear-gradient(130deg, #171b43 0%, #29265f 56%, #34458b 100%);
+}
+
+.recruiter-page .ra-drawer-header > div > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #c9c5ff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.recruiter-page .ra-drawer-header > div > span::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #a99cff;
+    box-shadow: 0 0 13px rgba(169, 156, 255, .9);
+    content: "";
+}
+
+.recruiter-page .ra-drawer-header h2 {
+    margin: 9px 0 0;
+    color: #fff;
+    font-size: clamp(21px, 3vw, 27px);
+    font-weight: 800;
+    letter-spacing: -.8px;
+    line-height: 1.2;
+}
+
+.recruiter-page .ra-drawer-close {
+    display: grid;
+    flex: 0 0 39px;
+    width: 39px;
+    height: 39px;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .22);
+    border-radius: 13px;
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    cursor: pointer;
+    transition: transform .2s ease, background .2s ease;
+}
+
+.recruiter-page .ra-drawer-close:hover {
+    transform: rotate(5deg) translateY(-2px);
+    background: rgba(255, 255, 255, .22);
+}
+
+.recruiter-page .ra-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 23px 26px 30px;
+    scrollbar-color: #c5c9e5 transparent;
+    scrollbar-width: thin;
+}
+
+.recruiter-page .ra-profile-hero {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 0 0 19px;
+    padding: 18px;
+    border: 1px solid #e7e9fa;
+    border-radius: 19px;
+    background: linear-gradient(120deg, #fff 0%, #f3f3ff 100%);
+    box-shadow: 0 8px 24px rgba(42, 48, 100, .055);
+}
+
+.recruiter-page .ra-avatar-large {
+    display: grid;
+    flex: 0 0 58px;
+    width: 58px;
+    height: 58px;
+    place-items: center;
+    border: 3px solid #fff;
+    border-radius: 19px;
+    background: linear-gradient(140deg, #7564f2, #4389ed);
+    box-shadow: 0 7px 18px rgba(92, 91, 218, .25);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 850;
+}
+
+.recruiter-page .ra-profile-hero h3 {
+    margin: 0 0 5px;
+    color: #202945;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -.3px;
+}
+
+.recruiter-page .ra-profile-hero a {
+    color: #645bd1;
+    font-size: 11px;
+    font-weight: 650;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.recruiter-page .ra-profile-hero a:hover { text-decoration: underline; }
+
+.recruiter-page .ra-detail-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin: 0 0 16px;
+    padding: 13px 16px;
+    border: 1px solid #e7e8f5;
+    border-radius: 14px;
+    background: #fff;
+}
+
+.recruiter-page .ra-detail-label {
+    color: #69748e;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.recruiter-page .ra-status.large {
+    padding: 7px 11px;
+    border-radius: 9px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .35px;
+}
+
+.recruiter-page .ra-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 17px;
+}
+
+.recruiter-page .ra-detail-grid > div {
+    min-width: 0;
+    padding: 14px 15px;
+    border: 1px solid #e8eaf5;
+    border-radius: 14px;
+    background: #fff;
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.recruiter-page .ra-detail-grid > div:hover {
+    transform: translateY(-2px);
+    border-color: #d5d4fb;
+    box-shadow: 0 8px 20px rgba(57, 65, 132, .07);
+}
+
+.recruiter-page .ra-detail-grid > div > span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #8790a7;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .75px;
+    text-transform: uppercase;
+}
+
+.recruiter-page .ra-detail-grid strong {
+    display: block;
+    color: #2d3855;
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.recruiter-page .ra-candidate-academics,
+.recruiter-page .ra-candidate-resume {
+    margin-top: 15px;
+    padding: 19px;
+    border: 1px solid #e5e8f5;
+    border-radius: 17px;
+    background: #fff;
+    box-shadow: 0 7px 22px rgba(35, 44, 91, .045);
+}
+
+.recruiter-page .ra-candidate-academics h3,
+.recruiter-page .ra-candidate-resume h3 {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 14px;
+    color: #283451;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: -.2px;
+}
+
+.recruiter-page .ra-candidate-academics h3 svg,
+.recruiter-page .ra-candidate-resume h3 svg { color: #7164e8; }
+
+.recruiter-page .ra-candidate-field {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid #f0f1f7;
+}
+
+.recruiter-page .ra-candidate-field:last-of-type { border-bottom: 0; }
+.recruiter-page .ra-candidate-field span,
+.recruiter-page .ra-candidate-bio > span,
+.recruiter-page .ra-candidate-skills > span {
+    color: #8490a7;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.recruiter-page .ra-candidate-field strong {
+    max-width: 65%;
+    color: #35415e;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.recruiter-page .ra-candidate-bio,
+.recruiter-page .ra-candidate-skills { margin-top: 17px; }
+
+.recruiter-page .ra-candidate-bio p,
+.recruiter-page .ra-candidate-muted,
+.recruiter-page .ra-candidate-error,
+.recruiter-page .ra-candidate-skills p,
+.recruiter-page .ra-candidate-resume p {
+    margin: 8px 0 0;
+    color: #74809a;
+    font-size: 11px;
+    line-height: 1.75;
+}
+
+.recruiter-page .ra-candidate-bio p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.recruiter-page .ra-candidate-error { color: #b42332; }
+
+.recruiter-page .ra-skill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.recruiter-page .ra-skill-list > span {
+    padding: 7px 10px;
+    border: 1px solid #dfdefd;
+    border-radius: 9px;
+    background: linear-gradient(120deg, #f5f3ff, #eff5ff);
+    color: #5655b8;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.recruiter-page .ra-candidate-resume {
+    background: linear-gradient(130deg, #fff 0%, #f6f6ff 100%);
+}
+
+.recruiter-page .ra-candidate-resume p { margin: 0 0 14px; }
+
+.recruiter-page .ra-resume-download,
+.recruiter-page .ra-email-selected,
+.recruiter-page .ra-email-rejected,
+.recruiter-page .ra-drawer-actions .recruiter-primary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 14px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+.recruiter-page .ra-resume-download { border-color: #d9ddff; background: #f0f2ff; color: #4e59cb; }
+.recruiter-page .ra-email-selected { border-color: #bde8cf; background: #effaf4; color: #16784f; }
+.recruiter-page .ra-email-rejected { border-color: #f1cbd0; background: #fff4f5; color: #ae3947; }
+.recruiter-page .ra-drawer-actions .recruiter-primary-button { border: 0; background: linear-gradient(110deg, #6c5ce7, #477eea); box-shadow: 0 9px 20px rgba(94, 91, 222, .2); color: #fff; }
+
+.recruiter-page .ra-resume-download:hover:not(:disabled),
+.recruiter-page .ra-email-selected:hover:not(:disabled),
+.recruiter-page .ra-email-rejected:hover:not(:disabled),
+.recruiter-page .ra-drawer-actions .recruiter-primary-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 9px 20px rgba(42, 51, 110, .1);
+}
+
+.recruiter-page .ra-drawer-actions { display: grid; gap: 10px; margin-top: 18px; }
+.recruiter-page .ra-resume-download:disabled,
+.recruiter-page .ra-email-selected:disabled,
+.recruiter-page .ra-email-rejected:disabled,
+.recruiter-page .ra-drawer-actions .recruiter-primary-button:disabled { cursor: not-allowed; opacity: .58; }
+
+.recruiter-page .ra-drawer button:focus-visible,
+.recruiter-page .ra-drawer a:focus-visible {
+    outline: 3px solid rgba(109, 94, 232, .38);
+    outline-offset: 3px;
+}
+
+@keyframes ra-review-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ra-review-slide { from { opacity: .65; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+
+@media (max-width: 620px) {
+    .recruiter-page .ra-drawer-backdrop { padding: 0; }
+    .recruiter-page .ra-drawer { width: 100%; border: 0; border-radius: 0; }
+    .recruiter-page .ra-drawer-header { padding: 21px 20px; }
+    .recruiter-page .ra-drawer-body { padding: 18px 17px 26px; }
+    .recruiter-page .ra-detail-grid { gap: 8px; }
+    .recruiter-page .ra-detail-grid > div { padding: 12px; }
+    .recruiter-page .ra-profile-hero { padding: 14px; }
+}
+
+@media (max-width: 390px) {
+    .recruiter-page .ra-detail-grid { grid-template-columns: 1fr; }
+    .recruiter-page .ra-candidate-field { flex-direction: column; gap: 5px; }
+    .recruiter-page .ra-candidate-field strong { max-width: 100%; text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .recruiter-page .ra-drawer-backdrop,
+    .recruiter-page .ra-drawer,
+    .recruiter-page .ra-drawer * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

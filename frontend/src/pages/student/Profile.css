@@ -1,0 +1,948 @@
+
+.student-profile-page {
+    --sp-primary: #5365e9;
+    --sp-primary-dark: #4052d0;
+    --sp-primary-soft: #eef0ff;
+    --sp-text: #17213b;
+    --sp-muted: #768197;
+    --sp-border: #e6e9f1;
+    --sp-surface: #ffffff;
+
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 30px 32px 48px;
+    color: var(--sp-text);
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.student-profile-page *,
+.student-profile-page *::before,
+.student-profile-page *::after {
+    box-sizing: border-box;
+}
+
+.student-profile-page button,
+.student-profile-page input,
+.student-profile-page select,
+.student-profile-page textarea {
+    font: inherit;
+}
+
+.sp-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.sp-eyebrow,
+.sp-section-kicker {
+    color: var(--sp-primary);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+.sp-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.sp-eyebrow-dot,
+.sp-status-dot,
+.sp-resume-status-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--sp-primary);
+}
+
+.sp-page-header h1 {
+    margin: 0;
+    color: var(--sp-text);
+    font-size: clamp(26px, 3vw, 34px);
+    font-weight: 750;
+    letter-spacing: -1.2px;
+    line-height: 1.2;
+}
+
+.sp-page-subtitle {
+    margin: 9px 0 0;
+    color: var(--sp-muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.sp-header-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 13px;
+    border: 1px solid var(--sp-border);
+    border-radius: 100px;
+    background: #fff;
+    color: #606c83;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sp-header-status .sp-status-dot {
+    background: #e6a23c;
+    box-shadow: 0 0 0 3px #fff4df;
+}
+
+.sp-header-status .sp-status-dot-green {
+    background: #16a572;
+    box-shadow: 0 0 0 3px #e4f8f0;
+}
+
+.sp-identity-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-height: 125px;
+    overflow: hidden;
+    padding: 24px 27px;
+    border: 1px solid #e6e8ff;
+    border-radius: 18px;
+    background:
+            radial-gradient(ellipse at 95% 0%, rgba(126, 139, 255, 0.14), transparent 42%),
+            linear-gradient(115deg, #fff 10%, #f7f8ff 100%);
+}
+
+.sp-avatar {
+    display: grid;
+    place-items: center;
+    width: 66px;
+    height: 66px;
+    flex-shrink: 0;
+    border: 4px solid #fff;
+    border-radius: 20px;
+    background: linear-gradient(145deg, #7381f9, #4b5bdd);
+    box-shadow: 0 5px 14px rgba(78, 93, 220, 0.2);
+    color: white;
+    font-size: 23px;
+    font-weight: 750;
+}
+
+.sp-identity-info {
+    min-width: 0;
+}
+
+.sp-identity-info h2 {
+    overflow-wrap: anywhere;
+    margin: 0;
+    color: var(--sp-text);
+    font-size: 19px;
+    font-weight: 750;
+    letter-spacing: -0.35px;
+}
+
+.sp-identity-info > p {
+    overflow-wrap: anywhere;
+    margin: 5px 0 10px;
+    color: var(--sp-muted);
+    font-size: 12px;
+}
+
+.sp-role-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: var(--sp-primary-soft);
+    color: var(--sp-primary-dark);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.sp-identity-decoration {
+    display: grid;
+    place-items: center;
+    width: 95px;
+    height: 95px;
+    margin-left: auto;
+    flex-shrink: 0;
+    border: 1px solid rgba(83, 101, 233, 0.1);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.52);
+    color: #aab2f6;
+}
+
+.sp-progress-card {
+    margin-top: 20px;
+    padding: 23px 25px 20px;
+    border: 1px solid var(--sp-border);
+    border-radius: 16px;
+    background: var(--sp-surface);
+    box-shadow: 0 3px 15px rgba(28, 42, 85, 0.025);
+}
+
+.sp-progress-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 19px;
+}
+
+.sp-section-kicker {
+    font-size: 9px;
+}
+
+.sp-progress-top h2 {
+    margin: 6px 0 5px;
+    font-size: 16px;
+    font-weight: 750;
+    letter-spacing: -0.35px;
+}
+
+.sp-progress-top p {
+    margin: 0;
+    color: var(--sp-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.sp-progress-number {
+    display: flex;
+    flex-shrink: 0;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.sp-progress-number strong {
+    color: var(--sp-primary);
+    font-size: 26px;
+    letter-spacing: -1px;
+}
+
+.sp-progress-number span {
+    padding-bottom: 4px;
+    color: var(--sp-muted);
+    font-size: 10px;
+}
+
+.sp-progress-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #edf0f7;
+}
+
+.sp-progress-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #7180f7, #4f60df);
+    transition: width 250ms ease;
+}
+
+.sp-progress-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    color: var(--sp-muted);
+    font-size: 10px;
+}
+
+.sp-progress-footer > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #53647d;
+}
+
+.sp-progress-footer svg {
+    color: #16a572;
+}
+
+.sp-alert {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-top: 18px;
+    padding: 13px 15px;
+    border: 1px solid;
+    border-radius: 12px;
+}
+
+.sp-alert-error {
+    border-color: #ffd8d8;
+    background: #fff7f7;
+    color: #a92b35;
+}
+
+.sp-alert-success {
+    border-color: #c8eedb;
+    background: #f1fbf6;
+    color: #15744c;
+}
+
+.sp-alert-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.sp-alert p {
+    flex: 1;
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.sp-alert-dismiss {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: currentColor;
+    cursor: pointer;
+    font-size: 22px !important;
+    line-height: 1;
+    opacity: 0.75;
+}
+
+.sp-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(250px, 0.85fr);
+    align-items: start;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.sp-card {
+    min-width: 0;
+    border: 1px solid var(--sp-border);
+    border-radius: 17px;
+    background: var(--sp-surface);
+    box-shadow: 0 4px 20px rgba(25, 37, 75, 0.025);
+}
+
+.sp-form-card {
+    padding: 25px;
+}
+
+.sp-card-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid #eff0f5;
+}
+
+.sp-icon-tile {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border: 1px solid #e2e6ff;
+    border-radius: 13px;
+    background: #f0f2ff;
+    color: var(--sp-primary);
+}
+
+.sp-card-heading h2 {
+    margin: 2px 0 7px;
+    color: var(--sp-text);
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: -0.4px;
+}
+
+.sp-card-heading p {
+    max-width: 410px;
+    margin: 0;
+    color: var(--sp-muted);
+    font-size: 11px;
+    line-height: 1.7;
+}
+
+.sp-form {
+    display: flex;
+    flex-direction: column;
+    gap: 19px;
+    padding-top: 23px;
+}
+
+.sp-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 8px;
+}
+
+.sp-field label,
+.sp-label-row label {
+    color: #38455d;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.sp-required {
+    margin-left: 3px;
+    color: #df5261;
+}
+
+.sp-field input,
+.sp-field select,
+.sp-field textarea {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid #dfe3ed;
+    border-radius: 9px;
+    outline: none;
+    background-color: #fff;
+    color: #26334b;
+    font-size: 12px;
+    line-height: 1.55;
+    transition:
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            background-color 150ms ease;
+}
+
+.sp-field input,
+.sp-field select {
+    min-height: 44px;
+}
+
+.sp-field select {
+    cursor: pointer;
+}
+
+.sp-field textarea {
+    min-height: 128px;
+    resize: vertical;
+}
+
+.sp-field input::placeholder,
+.sp-field textarea::placeholder {
+    color: #a1aabb;
+    opacity: 1;
+}
+
+.sp-field input:hover,
+.sp-field select:hover,
+.sp-field textarea:hover {
+    border-color: #bdc6dd;
+}
+
+.sp-field input:focus,
+.sp-field select:focus,
+.sp-field textarea:focus {
+    border-color: var(--sp-primary);
+    box-shadow: 0 0 0 3px rgba(83, 101, 233, 0.11);
+}
+
+.sp-field-hint {
+    color: #929bae;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.sp-form-row {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr);
+    gap: 15px;
+}
+
+.sp-year-field {
+    max-width: 240px;
+}
+
+.sp-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sp-char-count {
+    color: #98a1b1;
+    font-size: 10px;
+}
+
+.sp-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding-top: 20px;
+    border-top: 1px solid #eff0f5;
+}
+
+.sp-form-footer > p {
+    margin: 0;
+    color: #8b94a6;
+    font-size: 10px;
+}
+
+.sp-form-footer .sp-required {
+    margin-left: 0;
+}
+
+.sp-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 45px;
+    padding: 12px 15px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+            background-color 150ms ease,
+            border-color 150ms ease,
+            box-shadow 150ms ease,
+            transform 150ms ease;
+}
+
+.sp-button-primary {
+    width: auto;
+    min-width: 155px;
+    background: linear-gradient(110deg, #5f70ed, #4b5ddd);
+    box-shadow: 0 4px 10px rgba(77, 94, 220, 0.14);
+    color: white;
+}
+
+.sp-button-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    background: linear-gradient(110deg, #5263df, #4052cf);
+    box-shadow: 0 6px 15px rgba(77, 94, 220, 0.23);
+}
+
+.sp-button-primary:focus-visible,
+.sp-button-secondary:focus-visible {
+    outline: 3px solid rgba(83, 101, 233, 0.25);
+    outline-offset: 3px;
+}
+
+.sp-button-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.sp-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+}
+
+.sp-resume-card {
+    padding: 21px;
+}
+
+.sp-card-heading-compact {
+    align-items: center;
+    gap: 11px;
+    padding-bottom: 19px;
+}
+
+.sp-resume-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+}
+
+.sp-card-heading-compact h2 {
+    margin-top: 0;
+    margin-bottom: 4px;
+    font-size: 15px;
+}
+
+.sp-card-heading-compact p {
+    font-size: 10px;
+}
+
+.sp-resume-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.sp-resume-status-ready {
+    background: #eaf9f1;
+    color: #188257;
+}
+
+.sp-resume-status-ready .sp-resume-status-dot {
+    background: #19a56e;
+}
+
+.sp-resume-status-empty {
+    background: #fff5e6;
+    color: #9b6921;
+}
+
+.sp-resume-status-empty .sp-resume-status-dot {
+    background: #e3a13b;
+}
+
+.sp-file-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid #e8eaf2;
+    border-radius: 11px;
+    background: #fafbfe;
+}
+
+.sp-file-icon {
+    display: grid;
+    place-items: center;
+    width: 39px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: #edf0ff;
+    color: var(--sp-primary);
+}
+
+.sp-file-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.sp-file-info span {
+    overflow-wrap: anywhere;
+    color: #354158;
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.sp-file-info small {
+    color: #8993a5;
+    font-size: 10px;
+}
+
+.sp-file-preview > svg:last-child {
+    flex-shrink: 0;
+    color: #17a16c;
+}
+
+.sp-resume-description {
+    margin: 14px 0 17px;
+    color: var(--sp-muted);
+    font-size: 11px;
+    line-height: 1.8;
+}
+
+.sp-button-secondary {
+    justify-content: space-between;
+    min-height: 43px;
+    border-color: #e0e4f5;
+    background: #f8f9ff;
+    color: var(--sp-primary-dark);
+}
+
+.sp-button-secondary:hover {
+    border-color: #bdc7ff;
+    background: #eef0ff;
+}
+
+.sp-tip-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 19px;
+    border: 1px solid #e2e6ff;
+    border-radius: 15px;
+    background: linear-gradient(145deg, #f2f3ff, #fafaff);
+}
+
+.sp-tip-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 2px 7px rgba(54, 71, 150, 0.08);
+    color: var(--sp-primary);
+}
+
+.sp-tip-card h3 {
+    margin: 2px 0 7px;
+    color: #303d72;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.sp-tip-card p {
+    margin: 0;
+    color: #77809e;
+    font-size: 10px;
+    line-height: 1.8;
+}
+
+.sp-privacy-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 2px 3px;
+    color: #8993a5;
+}
+
+.sp-privacy-note svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #21a274;
+}
+
+.sp-privacy-note p {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.7;
+}
+
+.sp-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: sp-spin 0.7s linear infinite;
+}
+
+@keyframes sp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sp-skeleton {
+    border-radius: 16px;
+    background: linear-gradient(
+            90deg,
+            #edf0f7 25%,
+            #f6f7fb 50%,
+            #edf0f7 75%
+    );
+    background-size: 200% 100%;
+    animation: sp-shimmer 1.3s ease-in-out infinite;
+}
+
+.sp-skeleton-heading {
+    width: 270px;
+    height: 75px;
+    margin-bottom: 24px;
+}
+
+.sp-skeleton-card {
+    height: 440px;
+}
+
+.sp-skeleton-side {
+    height: 320px;
+}
+
+@keyframes sp-shimmer {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+.sp-error-state {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 70px auto;
+    padding: 35px 25px;
+    border: 1px solid var(--sp-border);
+    border-radius: 17px;
+    background: white;
+    text-align: center;
+}
+
+.sp-error-state h2 {
+    margin: 18px 0 8px;
+    font-size: 20px;
+}
+
+.sp-error-state p {
+    margin: 0 0 20px;
+    color: var(--sp-muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.sp-error-state .sp-button {
+    width: auto;
+}
+
+@media (max-width: 950px) {
+    .student-profile-page {
+        padding: 25px 23px 38px;
+    }
+
+    .sp-layout {
+        grid-template-columns: minmax(0, 1.25fr) minmax(225px, 0.8fr);
+        gap: 15px;
+    }
+
+    .sp-form-card {
+        padding: 21px;
+    }
+
+    .sp-resume-card {
+        padding: 17px;
+    }
+
+    .sp-identity-decoration {
+        width: 70px;
+        height: 70px;
+    }
+}
+
+@media (max-width: 720px) {
+    .student-profile-page {
+        padding: 22px 16px 35px;
+    }
+
+    .sp-page-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .sp-identity-card {
+        gap: 13px;
+        padding: 19px;
+    }
+
+    .sp-avatar {
+        width: 55px;
+        height: 55px;
+        border-radius: 16px;
+        font-size: 20px;
+    }
+
+    .sp-identity-info h2 {
+        font-size: 16px;
+    }
+
+    .sp-identity-decoration {
+        display: none;
+    }
+
+    .sp-progress-card {
+        padding: 19px;
+    }
+
+    .sp-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sp-side-column {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sp-form-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sp-year-field {
+        max-width: none;
+    }
+
+    .sp-skeleton-card,
+    .sp-skeleton-side {
+        height: 360px;
+    }
+}
+
+@media (max-width: 420px) {
+    .sp-form-card {
+        padding: 17px;
+    }
+
+    .sp-card-heading {
+        gap: 10px;
+    }
+
+    .sp-card-heading h2 {
+        font-size: 15px;
+    }
+
+    .sp-icon-tile {
+        width: 38px;
+        height: 38px;
+    }
+
+    .sp-progress-top {
+        align-items: flex-start;
+    }
+
+    .sp-progress-number {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0;
+    }
+
+    .sp-progress-number strong {
+        font-size: 23px;
+    }
+
+    .sp-progress-number span {
+        padding-bottom: 0;
+    }
+
+    .sp-form-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .sp-button-primary {
+        width: 100%;
+    }
+
+    .sp-progress-footer {
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .student-profile-page *,
+    .student-profile-page *::before,
+    .student-profile-page *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

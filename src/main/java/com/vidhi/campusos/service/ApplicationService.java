@@ -29,7 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import com.vidhi.campusos.dto.SkillResponse;
+import com.vidhi.campusos.dto.StudentProfileResponse;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 @Service
 public class ApplicationService {
 
@@ -318,6 +322,63 @@ public class ApplicationService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StudentProfileResponse getCandidateProfile(
+            UserDetails userDetails,
+            Long applicationId
+    ) {
+        User recruiterUser = getCurrentUser(userDetails);
+
+        if (recruiterUser.getRole() != UserRole.RECRUITER) {
+            throw new AccessDeniedException(
+                    "Only recruiters can view candidate profiles"
+            );
+        }
+
+        RecruiterProfile recruiter = recruiterProfileRepository
+                .findByUserId(recruiterUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Recruiter profile not found"
+                ));
+
+        Application application = applicationRepository
+                .findById(applicationId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Application not found"
+                ));
+
+        // A recruiter can only access candidates for their own company's jobs.
+        if (!application.getJob().getCompany().getId()
+                .equals(recruiter.getCompany().getId())) {
+            throw new AccessDeniedException(
+                    "You can only view candidates for your company's jobs"
+            );
+        }
+
+        StudentProfile student = application.getStudent();
+        User studentUser = student.getUser();
+
+        Set<SkillResponse> skills = student.getSkills()
+                .stream()
+                .map(skill -> new SkillResponse(
+                        skill.getId(),
+                        skill.getName()
+                ))
+                .collect(Collectors.toSet());
+
+        return new StudentProfileResponse(
+                student.getId(),
+                studentUser.getName(),
+                studentUser.getEmail(),
+                student.getCollege(),
+                student.getDegree(),
+                student.getBranch(),
+                student.getGraduationYear(),
+                student.getBio(),
+                skills
+        );
     }
 
     @Transactional

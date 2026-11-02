@@ -20,6 +20,7 @@ import { Link } from "react-router-dom";
 import { getCurrentUser } from "../../api/authApi";
 import {
     getJobs,
+    getJobMatches,
     getResumeMetadata,
     getSavedJobs,
 } from "../../api/studentApi";
@@ -42,24 +43,6 @@ function getStatusClass(status) {
     return String(status || "applied")
         .toLowerCase()
         .replaceAll("_", "-");
-}
-
-function formatDate(value) {
-    if (!value) {
-        return "Recently";
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "Recently";
-    }
-
-    return date.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    });
 }
 
 function formatRelativeDate(value) {
@@ -323,6 +306,8 @@ function StudentDashboard() {
     const [applications, setApplications] = useState([]);
     const [savedJobs, setSavedJobs] = useState([]);
     const [recommendedJobs, setRecommendedJobs] = useState([]);
+    const [aiMatches, setAiMatches] = useState([]);
+    const [aiMatchesUnavailable, setAiMatchesUnavailable] = useState(false);
     const [resume, setResume] = useState(null);
 
     const [loading, setLoading] = useState(true);
@@ -347,6 +332,7 @@ function StudentDashboard() {
                     getMyApplications(),
                     getSavedJobs(),
                     getResumeMetadata(),
+                    getJobMatches(6),
                     getJobs({
                         page: 0,
                         size: 6,
@@ -359,6 +345,7 @@ function StudentDashboard() {
                 applicationsResult,
                 savedResult,
                 resumeResult,
+                matchesResult,
                 jobsResult,
             ] = results;
 
@@ -398,6 +385,16 @@ function StudentDashboard() {
                 );
             }
 
+            if (matchesResult.status === "fulfilled") {
+                setAiMatches(extractList(matchesResult.value));
+                setAiMatchesUnavailable(false);
+            } else {
+                // AI matching is an optional enhancement. A missing AI endpoint
+                // must not prevent the rest of the dashboard from loading.
+                setAiMatches([]);
+                setAiMatchesUnavailable(true);
+            }
+
             if (
                 jobsResult.status ===
                 "fulfilled"
@@ -435,6 +432,7 @@ function StudentDashboard() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         loadDashboard();
     }, []);
 
@@ -573,16 +571,6 @@ function StudentDashboard() {
         }, [user, resume]);
 
     const nextAction = useMemo(() => {
-        if (profileProgress < 100) {
-            return {
-                title: "Complete your profile",
-                description:
-                    "A complete profile makes your application stronger.",
-                href: "/student/profile",
-                icon: UserRound,
-            };
-        }
-
         if (!resume) {
             return {
                 title: "Add your resume",
@@ -590,6 +578,16 @@ function StudentDashboard() {
                     "Upload a resume before applying to more roles.",
                 href: "/student/resume",
                 icon: FileText,
+            };
+        }
+
+        if (profileProgress < 100) {
+            return {
+                title: "Complete your profile",
+                description:
+                    "A complete profile makes your application stronger.",
+                href: "/student/profile",
+                icon: UserRound,
             };
         }
 
@@ -871,6 +869,82 @@ function StudentDashboard() {
                                         size={14}
                                     />
                                 </Link>
+                            </div>
+                        )}
+                    </section>
+
+                    {/* AI JOB MATCHING */}
+                    <section className="dashboard-section-card dashboard-ai-matches">
+                        <div className="dashboard-section-header">
+                            <div>
+                                <span className="dashboard-section-eyebrow">
+                                    <Sparkles size={12} /> PERSONALIZED FOR YOU
+                                </span>
+                                <h2>AI job matches</h2>
+                                <p className="dashboard-ai-intro">
+                                    Ranked using the skills listed on your student profile.
+                                </p>
+                            </div>
+                            <Link to="/student/jobs" className="dashboard-view-all">
+                                All jobs <ArrowRight size={14} />
+                            </Link>
+                        </div>
+
+                        {aiMatchesUnavailable ? (
+                            <div className="dashboard-ai-empty">
+                                <Sparkles size={20} />
+                                <div>
+                                    <strong>Personalized matches aren't available yet</strong>
+                                    <span>Add skills to your student profile and try refreshing.</span>
+                                </div>
+                                <Link to="/student/profile">Update skills</Link>
+                            </div>
+                        ) : aiMatches.length > 0 ? (
+                            <div className="dashboard-ai-list">
+                                {aiMatches.slice(0, 4).map((job) => (
+                                    <Link
+                                        to={`/student/jobs/${job.id}`}
+                                        className="dashboard-ai-row"
+                                        key={job.id}
+                                    >
+                                        <div className="dashboard-company-avatar">
+                                            {getInitials(job.companyName || job.company?.name) || "C"}
+                                        </div>
+                                        <div className="dashboard-ai-job-main">
+                                            <strong>{job.title || "Untitled opportunity"}</strong>
+                                            <span>
+                                                {job.companyName || job.company?.name || "Company"}
+                                                {" · "}
+                                                {job.location || "Location flexible"}
+                                            </span>
+                                            <div className="dashboard-ai-skills">
+                                                {(job.matchedSkills || []).slice(0, 3).map((skill) => (
+                                                    <span className="is-matched" key={`matched-${skill}`}>{skill}</span>
+                                                ))}
+                                                {(job.missingSkills || []).slice(0, 2).map((skill) => (
+                                                    <span className="is-missing" key={`missing-${skill}`}>{skill}</span>
+                                                ))}
+                                                {!(job.matchedSkills || []).length && !(job.missingSkills || []).length && (
+                                                    <span>Add profile skills for better matches</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="dashboard-ai-score">
+                                            <strong>{Number.isFinite(Number(job.matchScore)) ? Math.round(Number(job.matchScore)) : 0}%</strong>
+                                            <span>skill match</span>
+                                        </div>
+                                        <ChevronRight size={16} />
+                                    </Link>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="dashboard-ai-empty">
+                                <Sparkles size={20} />
+                                <div>
+                                    <strong>No personalized matches yet</strong>
+                                    <span>Fill in your profile skills and check back for ranked roles.</span>
+                                </div>
+                                <Link to="/student/profile">Add skills</Link>
                             </div>
                         )}
                     </section>

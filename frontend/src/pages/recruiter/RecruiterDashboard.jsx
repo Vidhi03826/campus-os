@@ -13,8 +13,12 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../../auth/AuthContext";
-import { getMyJobs } from "../../api/recruiterApi";
-import "../../styles/recruiter-dashboard.css";
+import {
+    getMyJobs,
+    getMyCompany,
+    createCompany
+} from "../../api/recruiterApi";
+import "./recruiter-dashboard.css";
 import "../../styles/recruiter.css";
 const STATUS_LABELS = {
     PUBLISHED: "Published",
@@ -91,7 +95,6 @@ const getJobsFromResponse = (data) => {
         []
     );
 };
-
 function StatCard({
                       icon: Icon,
                       label,
@@ -126,7 +129,6 @@ function StatusBadge({ status }) {
         </span>
     );
 }
-
 function RecruiterDashboard() {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
@@ -138,7 +140,36 @@ function RecruiterDashboard() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
+    const [company, setCompany] = useState(null);
+    const [showCompanyForm, setShowCompanyForm] = useState(false);
+    const [companyLoading, setCompanyLoading] = useState(true);
+    const [companyData, setCompanyData] = useState({
+        name: "",
+        description: "",
+        website: "",
+        location: "",
+        designation: "",
+    });
+    const loadCompany = async () => {
+        try {
+            setCompanyLoading(true);
 
+            const data = await getMyCompany();
+            setCompany(data);
+            setShowCompanyForm(false);
+
+        } catch (error) {
+            if (error.response?.status === 404) {
+                setCompany(null);
+                setShowCompanyForm(true);
+            } else {
+                console.error("Failed to load recruiter profile:", error);
+                setError(getErrorMessage(error));
+            }
+        } finally {
+            setCompanyLoading(false);
+        }
+    };
     const loadJobs = useCallback(async (isRefresh = false) => {
         if (isRefresh) {
             setRefreshing(true);
@@ -163,7 +194,8 @@ function RecruiterDashboard() {
 
     useEffect(() => {
         loadJobs();
-    }, [loadJobs]);
+        loadCompany();
+    }, []);
 
     const stats = useMemo(() => {
         const published = jobs.filter(
@@ -185,6 +217,30 @@ function RecruiterDashboard() {
             closed,
         };
     }, [jobs]);
+    const handleCompanySubmit = async (e) => {
+        e.preventDefault();
+
+        try {
+            setCompanyLoading(true);
+
+            const data = await createCompany(companyData);
+
+            setCompany(data);
+            setShowCompanyForm(false);
+
+            alert("Company profile created successfully! Waiting for admin verification.");
+
+        } catch (error) {
+            console.error("Failed to create company:", error);
+
+            alert(
+                error.response?.data?.message ||
+                "Failed to create company profile."
+            );
+        } finally {
+            setCompanyLoading(false);
+        }
+    };
 
     const recentJobs = useMemo(() => {
         return [...jobs]
@@ -208,8 +264,9 @@ function RecruiterDashboard() {
             .slice(0, 5);
     }, [jobs]);
 
+    const [currentTime] = useState(() => new Date().getTime());
+
     const upcomingDeadlines = useMemo(() => {
-        const now = Date.now();
 
         return jobs
             .filter((job) => {
@@ -219,7 +276,7 @@ function RecruiterDashboard() {
 
                 return (
                     !Number.isNaN(deadline) &&
-                    deadline >= now &&
+                    deadline >= currentTime &&
                     String(job.status).toUpperCase() === "PUBLISHED"
                 );
             })
@@ -229,12 +286,51 @@ function RecruiterDashboard() {
                     new Date(b.applicationDeadline).getTime()
             )
             .slice(0, 4);
-    }, [jobs]);
+    }, [jobs, currentTime]);
 
     const handleLogout = async () => {
         await logout();
         navigate("/login", { replace: true });
     };
+
+    if (showCompanyForm) {
+        return (
+            <main className="rd-page">
+                <div className="rd-container">
+                    <section className="rd-panel company-profile-container" style={{ maxWidth: 720, margin: "48px auto", padding: 32 }}>
+                        <h1>Complete Your Company Profile</h1>
+                        <p>Please complete your company details before creating jobs. Your profile will be sent to the admin for verification.</p>
+                        <form onSubmit={handleCompanySubmit} style={{ display: "grid", gap: 16 }}>
+                            <label>
+                                Company Name *
+                                <input type="text" value={companyData.name} onChange={(e) => setCompanyData({ ...companyData, name: e.target.value })} required maxLength={200} />
+                            </label>
+                            <label>
+                                Company Description
+                                <textarea value={companyData.description} onChange={(e) => setCompanyData({ ...companyData, description: e.target.value })} maxLength={5000} rows={4} />
+                            </label>
+                            <label>
+                                Website
+                                <input type="url" placeholder="https://example.com" value={companyData.website} onChange={(e) => setCompanyData({ ...companyData, website: e.target.value })} maxLength={500} />
+                            </label>
+                            <label>
+                                Location
+                                <input type="text" value={companyData.location} onChange={(e) => setCompanyData({ ...companyData, location: e.target.value })} maxLength={200} />
+                            </label>
+                            <label>
+                                Your Designation *
+                                <input type="text" value={companyData.designation} onChange={(e) => setCompanyData({ ...companyData, designation: e.target.value })} required maxLength={100} />
+                            </label>
+                            <button type="submit" className="rd-primary-button" disabled={companyLoading}>
+                                {companyLoading ? "Saving..." : "Create Company Profile"}
+                            </button>
+                            {error && <p role="alert">{error}</p>}
+                        </form>
+                    </section>
+                </div>
+            </main>
+        );
+    }
 
     return (
         <main className="rd-page">
@@ -294,6 +390,9 @@ function RecruiterDashboard() {
                             <small>
                                 {user?.email || "Recruiter account"}
                             </small>
+                            {company?.verificationStatus && (
+                                <small>Profile status: {String(company.verificationStatus).replaceAll("_", " ")}</small>
+                            )}
                         </div>
                     </div>
                 </section>

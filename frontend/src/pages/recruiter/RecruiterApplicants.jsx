@@ -3,22 +3,40 @@ import { Link, useParams } from "react-router-dom";
 import {
     ArrowLeft,
     BriefcaseBusiness,
+    CalendarDays,
     CheckCircle2,
     ChevronDown,
     Clock3,
+    Download,
+    FileText,
+    GraduationCap,
     Mail,
     RefreshCw,
     Search,
-    UserRound,
     Users,
     XCircle,
 } from "lucide-react";
+
 import { useToast } from "../../context/ToastContext";
 import {
+    downloadCandidateResume,
     getApplicantsForJob,
+    getCandidateProfile,
     updateApplicationStatus,
 } from "../../api/applicationApi";
+
 import "../../styles/recruiter.css";
+import "../../styles/recruiter-applicants.css";
+import "../../styles/recruiter-candidate-review.css";
+
+// Open Gmail's browser-based compose window so Contact Candidate works even
+// when the computer has no default mail app configured.
+const gmailComposeUrl = (email, subject = "", body = "") => {
+    const params = new URLSearchParams({ view: "cm", fs: "1", to: email });
+    if (subject) params.set("su", subject);
+    if (body) params.set("body", body);
+    return `https://mail.google.com/mail/?${params.toString()}`;
+};
 
 const STATUS_OPTIONS = [
     "ALL",
@@ -36,6 +54,9 @@ const STATUS_FLOW = {
     UNDER_REVIEW: ["SHORTLISTED", "REJECTED"],
     SHORTLISTED: ["INTERVIEW", "REJECTED"],
     INTERVIEW: ["SELECTED", "REJECTED"],
+    SELECTED: [],
+    REJECTED: [],
+    WITHDRAWN: [],
 };
 
 const statusLabel = (status) =>
@@ -45,7 +66,7 @@ const statusLabel = (status) =>
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const statusClass = (status) => {
-    switch (status) {
+    switch (String(status || "").toUpperCase()) {
         case "APPLIED":
             return "status-applied";
         case "UNDER_REVIEW":
@@ -69,10 +90,7 @@ const formatDate = (value) => {
     if (!value) return "—";
 
     const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return "—";
-    }
+    if (Number.isNaN(date.getTime())) return "—";
 
     return date.toLocaleDateString("en-IN", {
         day: "2-digit",
@@ -93,14 +111,52 @@ const extractApplicants = (data) => {
     );
 };
 
+const getApplicationId = (application) =>
+    application?.applicationId ?? application?.id ?? null;
+
+const getApplicantName = (application) =>
+    application?.studentName ??
+    application?.applicantName ??
+    application?.name ??
+    application?.student?.name ??
+    "Unnamed applicant";
+
+const getApplicantEmail = (application) =>
+    application?.studentEmail ??
+    application?.applicantEmail ??
+    application?.email ??
+    application?.student?.email ??
+    "";
+
+const getInitials = (name = "") =>
+    name
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase())
+        .join("") || "?";
+
+const getErrorMessage = (error, fallback) =>
+    error?.response?.data?.message ||
+    error?.response?.data?.detail ||
+    error?.message ||
+    fallback;
+
 export default function RecruiterApplicants() {
     const { jobId } = useParams();
     const { success: showSuccess, error: showError } = useToast();
+
     const [applicants, setApplicants] = useState([]);
     const [jobTitle, setJobTitle] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("ALL");
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedApplicant, setSelectedApplicant] = useState(null);
+
+    const [candidateProfile, setCandidateProfile] = useState(null);
+    const [candidateProfileLoading, setCandidateProfileLoading] = useState(false);
+    const [candidateProfileError, setCandidateProfileError] = useState("");
+    const [resumeDownloading, setResumeDownloading] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -110,7 +166,11 @@ export default function RecruiterApplicants() {
 
     const loadApplicants = useCallback(
         async (showRefresh = false) => {
-            if (!jobId) return;
+            if (!jobId) {
+                setLoading(false);
+                setError("Job ID is missing from this page URL.");
+                return;
+            }
 
             try {
                 if (showRefresh) {
@@ -120,6 +180,7 @@ export default function RecruiterApplicants() {
                 }
 
                 setError("");
+                setSuccess("");
 
                 const data = await getApplicantsForJob(jobId);
                 const list = extractApplicants(data);
@@ -137,11 +198,11 @@ export default function RecruiterApplicants() {
                 }
             } catch (err) {
                 console.error("Failed to load applicants:", err);
-
                 setError(
-                    err?.response?.data?.message ||
-                    err?.response?.data?.detail ||
-                    "Unable to load applicants right now."
+                    getErrorMessage(
+                        err,
+                        "Unable to load applicants right now."
+                    )
                 );
             } finally {
                 setLoading(false);
@@ -168,10 +229,9 @@ export default function RecruiterApplicants() {
         };
 
         applicants.forEach((applicant) => {
-            const status = applicant?.status;
-
-            if (status && result[status] !== undefined) {
-                result[status]++;
+            const status = String(applicant?.status || "").toUpperCase();
+            if (Object.prototype.hasOwnProperty.call(result, status)) {
+                result[status] += 1;
             }
         });
 
@@ -182,22 +242,18 @@ export default function RecruiterApplicants() {
         const query = searchTerm.trim().toLowerCase();
 
         return applicants.filter((applicant) => {
+            const status = String(applicant?.status || "").toUpperCase();
             const matchesStatus =
-                selectedStatus === "ALL" ||
-                applicant?.status === selectedStatus;
+                selectedStatus === "ALL" || status === selectedStatus;
 
             if (!matchesStatus) return false;
-
             if (!query) return true;
 
             const searchableText = [
-                applicant?.studentName,
-                applicant?.studentEmail,
-                applicant?.name,
-                applicant?.email,
-                applicant?.student?.name,
-                applicant?.student?.email,
+                getApplicantName(applicant),
+                getApplicantEmail(applicant),
                 applicant?.jobTitle,
+                applicant?.companyName,
             ]
                 .filter(Boolean)
                 .join(" ")
@@ -210,28 +266,24 @@ export default function RecruiterApplicants() {
     const handleStatusChange = async (applicationId, nextStatus) => {
         if (!applicationId || !nextStatus) return;
 
-        const applicant = applicants.find((item) => {
-            const itemId = item?.applicationId ?? item?.id;
-            return String(itemId) === String(applicationId);
-        });
+        const applicant = applicants.find(
+            (item) =>
+                String(getApplicationId(item)) === String(applicationId)
+        );
 
         if (!applicant) return;
 
-        const currentStatus = String(
-            applicant?.status || "APPLIED"
-        ).toUpperCase();
+        const currentStatus = String(applicant.status || "APPLIED").toUpperCase();
 
         if (
             nextStatus === currentStatus ||
-            !(STATUS_FLOW[currentStatus] ?? []).includes(nextStatus)
+            !(STATUS_FLOW[currentStatus] || []).includes(nextStatus)
         ) {
             return;
         }
 
         const confirmed = window.confirm(
-            `Move this application from ${statusLabel(
-                currentStatus
-            )} to ${statusLabel(nextStatus)}?`
+            `Move this application from ${statusLabel(currentStatus)} to ${statusLabel(nextStatus)}?`
         );
 
         if (!confirmed) return;
@@ -246,93 +298,194 @@ export default function RecruiterApplicants() {
                 nextStatus
             );
 
-            setApplicants((current) =>
-                current.map((item) => {
-                    const itemId =
-                        item?.applicationId ?? item?.id;
+            const finalStatus = updated?.status || nextStatus;
 
-                    return String(itemId) === String(applicationId)
-                        ? {
-                            ...item,
-                            ...(updated || {}),
-                            status:
-                                updated?.status ||
-                                nextStatus,
-                        }
-                        : item;
-                })
+            setApplicants((current) =>
+                current.map((item) =>
+                    String(getApplicationId(item)) === String(applicationId)
+                        ? { ...item, ...(updated || {}), status: finalStatus }
+                        : item
+                )
             );
 
             setSelectedApplicant((current) => {
-                if (!current) return current;
+                if (
+                    !current ||
+                    String(getApplicationId(current)) !== String(applicationId)
+                ) {
+                    return current;
+                }
 
-                const currentId =
-                    current?.applicationId ?? current?.id;
-
-                return String(currentId) === String(applicationId)
-                    ? {
-                        ...current,
-                        ...(updated || {}),
-                        status:
-                            updated?.status ||
-                            nextStatus,
-                    }
-                    : current;
+                return { ...current, ...(updated || {}), status: finalStatus };
             });
 
-            const message = `Application moved to ${statusLabel(
-                nextStatus
-            )}.`;
-
+            const message = `Application moved to ${statusLabel(finalStatus)}.`;
             setSuccess(message);
-
-            showSuccess(
-                "Application status updated successfully.",
-                "Status updated"
-            );
+            showSuccess(message, "Status updated");
         } catch (err) {
-            console.error(
-                "Failed to update application:",
-                err
+            console.error("Failed to update application:", err);
+            const message = getErrorMessage(
+                err,
+                "Unable to update application status."
             );
-
-            const message =
-                err?.response?.data?.message ||
-                err?.response?.data?.detail ||
-                "Unable to update application status.";
-
             setError(message);
             showError(message);
         } finally {
             setUpdatingId(null);
         }
     };
-    const getApplicantName = (applicant) =>
-        applicant?.studentName ||
-        applicant?.name ||
-        applicant?.student?.name ||
-        "Unnamed applicant";
 
-    const getApplicantEmail = (applicant) =>
-        applicant?.studentEmail ||
-        applicant?.email ||
-        applicant?.student?.email ||
-        "No email available";
+    const selectedApplicationId = selectedApplicant
+        ? getApplicationId(selectedApplicant)
+        : null;
 
-    const getApplicationId = (applicant) =>
-        applicant?.applicationId ||
-        applicant?.id;
+    useEffect(() => {
+        let cancelled = false;
+
+        if (!selectedApplicationId) {
+            setCandidateProfile(null);
+            setCandidateProfileError("");
+            setCandidateProfileLoading(false);
+            return () => {
+                cancelled = true;
+            };
+        }
+
+        setCandidateProfile(null);
+        setCandidateProfileError("");
+        setCandidateProfileLoading(true);
+
+        getCandidateProfile(selectedApplicationId)
+            .then((data) => {
+                if (!cancelled) setCandidateProfile(data);
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    setCandidateProfileError(
+                        getErrorMessage(
+                            err,
+                            "Unable to load this candidate's profile."
+                        )
+                    );
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCandidateProfileLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedApplicationId]);
+
+    const handleDownloadCandidateResume = async () => {
+        if (!selectedApplicationId) return;
+
+        try {
+            setResumeDownloading(true);
+
+            const response = await downloadCandidateResume(
+                selectedApplicationId
+            );
+
+            const blob = response.data;
+            const disposition =
+                response.headers?.["content-disposition"] || "";
+            const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
+            const fallbackName = `${getApplicantName(selectedApplicant)
+                .replace(/[^\w.-]+/g, "_")}_resume.pdf`;
+            const filename = filenameMatch?.[1] || fallbackName;
+
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+        } catch (err) {
+            console.error("Candidate resume download failed:", err);
+            showError(
+                err?.response?.status === 404
+                    ? "This candidate has not uploaded a resume."
+                    : getErrorMessage(
+                        err,
+                        "Unable to download the candidate's resume."
+                    )
+            );
+        } finally {
+            setResumeDownloading(false);
+        }
+    };
+
+    const openDecisionEmail = (outcome) => {
+        if (!selectedApplicant) return;
+
+        const email = getApplicantEmail(selectedApplicant);
+        if (!email) {
+            showError("This candidate does not have an email address.");
+            return;
+        }
+
+        const name = getApplicantName(selectedApplicant);
+        const title =
+            selectedApplicant.jobTitle ||
+            selectedApplicant.job?.title ||
+            jobTitle ||
+            "the advertised role";
+        const company =
+            selectedApplicant.companyName ||
+            selectedApplicant.job?.companyName ||
+            "the recruitment team";
+        const isSelected = outcome === "SELECTED";
+
+        const subject = isSelected
+            ? `Round 1 Result: Selected - ${title}`
+            : `Round 1 Result: Not Selected - ${title}`;
+
+        const body = isSelected
+            ? `Hi ${name},
+
+Thank you for applying for ${title} at ${company}.
+
+We are pleased to inform you that you have been selected in Round 1 of our recruitment process.
+
+We will share the details of the next round with you shortly.
+
+Congratulations, and thank you for your interest.
+
+Regards,
+${company} Recruitment Team`
+            : `Hi ${name},
+
+Thank you for applying for ${title} at ${company} and for the time you invested in our recruitment process.
+
+After reviewing your application, we regret to inform you that you have not been selected to proceed beyond Round 1.
+
+We appreciate your interest and wish you the very best in your future endeavors.
+
+Regards,
+${company} Recruitment Team`;
+
+        const composeUrl = gmailComposeUrl(email, subject, body);
+        window.open(composeUrl, "_blank", "noopener,noreferrer");
+    };
+
+    const closeCandidateDrawer = () => {
+        setSelectedApplicant(null);
+        setCandidateProfile(null);
+        setCandidateProfileError("");
+    };
 
     return (
         <div className="recruiter-page">
             <div className="recruiter-container">
-                {/* HEADER */}
-                <div className="ra-header">
+                <header className="ra-header">
                     <div>
-                        <Link
-                            to="/recruiter/jobs"
-                            className="ra-back-link"
-                        >
+                        <Link to="/recruiter/jobs" className="ra-back-link">
                             <ArrowLeft size={16} />
                             Back to jobs
                         </Link>
@@ -348,12 +501,9 @@ export default function RecruiterApplicants() {
                                         ? `${jobTitle} — Applicants`
                                         : "Applicants"}
                                 </h1>
-
                                 <p>
-                                    Review candidates, manage
-                                    applications and move
-                                    shortlisted talent through
-                                    your hiring pipeline.
+                                    Review candidate profiles, assess resumes,
+                                    and move applicants through your hiring pipeline.
                                 </p>
                             </div>
                         </div>
@@ -367,36 +517,28 @@ export default function RecruiterApplicants() {
                     >
                         <RefreshCw
                             size={16}
-                            className={
-                                refreshing
-                                    ? "ra-spin"
-                                    : ""
-                            }
+                            className={refreshing ? "ra-spin" : ""}
                         />
-                        {refreshing
-                            ? "Refreshing..."
-                            : "Refresh"}
+                        {refreshing ? "Refreshing..." : "Refresh"}
                     </button>
-                </div>
+                </header>
 
-                {/* ALERTS */}
                 {error && (
-                    <div className="recruiter-alert recruiter-alert-error">
+                    <div className="recruiter-alert recruiter-alert-error" role="alert">
                         <XCircle size={18} />
                         <span>{error}</span>
                     </div>
                 )}
 
                 {success && (
-                    <div className="recruiter-alert recruiter-alert-success">
+                    <div className="recruiter-alert recruiter-alert-success" role="status">
                         <CheckCircle2 size={18} />
                         <span>{success}</span>
                     </div>
                 )}
 
-                {/* PIPELINE STATS */}
                 {!loading && (
-                    <div className="ra-pipeline">
+                    <section className="ra-pipeline" aria-label="Applicant statistics">
                         <div className="ra-pipeline-card ra-pipeline-total">
                             <div className="ra-pipeline-icon">
                                 <Users size={18} />
@@ -413,9 +555,7 @@ export default function RecruiterApplicants() {
                             </div>
                             <div>
                                 <span>Under review</span>
-                                <strong>
-                                    {counts.UNDER_REVIEW}
-                                </strong>
+                                <strong>{counts.UNDER_REVIEW}</strong>
                             </div>
                         </div>
 
@@ -425,9 +565,7 @@ export default function RecruiterApplicants() {
                             </div>
                             <div>
                                 <span>Shortlisted</span>
-                                <strong>
-                                    {counts.SHORTLISTED}
-                                </strong>
+                                <strong>{counts.SHORTLISTED}</strong>
                             </div>
                         </div>
 
@@ -437,27 +575,21 @@ export default function RecruiterApplicants() {
                             </div>
                             <div>
                                 <span>Selected</span>
-                                <strong>
-                                    {counts.SELECTED}
-                                </strong>
+                                <strong>{counts.SELECTED}</strong>
                             </div>
                         </div>
-                    </div>
+                    </section>
                 )}
 
-                {/* FILTER TOOLBAR */}
-                <section className="ra-toolbar">
+                <section className="ra-toolbar" aria-label="Applicant filters">
                     <div className="ra-search">
                         <Search size={18} />
                         <input
                             type="search"
+                            aria-label="Search candidates"
                             placeholder="Search by candidate name or email..."
                             value={searchTerm}
-                            onChange={(event) =>
-                                setSearchTerm(
-                                    event.target.value
-                                )
-                            }
+                            onChange={(event) => setSearchTerm(event.target.value)}
                         />
                     </div>
 
@@ -466,53 +598,32 @@ export default function RecruiterApplicants() {
                             <button
                                 key={status}
                                 type="button"
-                                className={`ra-filter ${
-                                    selectedStatus === status
-                                        ? "active"
-                                        : ""
-                                }`}
-                                onClick={() =>
-                                    setSelectedStatus(status)
-                                }
+                                className={`ra-filter ${selectedStatus === status ? "active" : ""}`}
+                                aria-pressed={selectedStatus === status}
+                                onClick={() => setSelectedStatus(status)}
                             >
-                                {status === "ALL"
-                                    ? "All"
-                                    : statusLabel(status)}
-
-                                <span>
-                                    {counts[status] ?? 0}
-                                </span>
+                                {status === "ALL" ? "All" : statusLabel(status)}
+                                <span>{counts[status] ?? 0}</span>
                             </button>
                         ))}
                     </div>
                 </section>
 
-                {/* RESULTS */}
                 <section className="ra-content">
                     <div className="ra-results-header">
                         <div>
                             <h2>Candidate pipeline</h2>
                             <p>
-                                Showing{" "}
-                                <strong>
-                                    {filteredApplicants.length}
-                                </strong>{" "}
-                                of{" "}
-                                <strong>
-                                    {applicants.length}
-                                </strong>{" "}
-                                applications
+                                Showing <strong>{filteredApplicants.length}</strong> of{" "}
+                                <strong>{applicants.length}</strong> applications
                             </p>
                         </div>
                     </div>
 
                     {loading ? (
-                        <div className="ra-list">
+                        <div className="ra-list" aria-label="Loading applicants">
                             {[1, 2, 3, 4].map((item) => (
-                                <div
-                                    key={item}
-                                    className="ra-card ra-skeleton-card"
-                                >
+                                <div key={item} className="ra-card ra-skeleton-card">
                                     <div className="ra-skeleton ra-avatar-skeleton" />
                                     <div className="ra-skeleton-content">
                                         <div className="ra-skeleton ra-line-lg" />
@@ -527,29 +638,24 @@ export default function RecruiterApplicants() {
                             <div className="ra-empty-icon">
                                 <Users size={28} />
                             </div>
-
                             <h3>
                                 {applicants.length === 0
                                     ? "No applicants yet"
                                     : "No matching applicants"}
                             </h3>
-
                             <p>
                                 {applicants.length === 0
-                                    ? "Applications for this role will appear here once students apply."
-                                    : "Try changing your search or status filter."}
+                                    ? "Applications for this role will appear here when students apply."
+                                    : "Try changing your search term or status filter."}
                             </p>
 
-                            {(searchTerm ||
-                                selectedStatus !== "ALL") && (
+                            {(searchTerm || selectedStatus !== "ALL") && (
                                 <button
                                     type="button"
                                     className="recruiter-secondary-button"
                                     onClick={() => {
                                         setSearchTerm("");
-                                        setSelectedStatus(
-                                            "ALL"
-                                        );
+                                        setSelectedStatus("ALL");
                                     }}
                                 >
                                     Clear filters
@@ -558,210 +664,122 @@ export default function RecruiterApplicants() {
                         </div>
                     ) : (
                         <div className="ra-list">
-                            {filteredApplicants.map(
-                                (applicant) => {
-                                    const applicationId =
-                                        getApplicationId(
-                                            applicant
-                                        );
-                                    const name =
-                                        getApplicantName(
-                                            applicant
-                                        );
-                                    const email =
-                                        getApplicantEmail(
-                                            applicant
-                                        );
-                                    const status =
-                                        applicant?.status;
+                            {filteredApplicants.map((applicant) => {
+                                const applicationId = getApplicationId(applicant);
+                                const name = getApplicantName(applicant);
+                                const email = getApplicantEmail(applicant);
+                                const status = String(applicant?.status || "APPLIED").toUpperCase();
+                                const availableTransitions = STATUS_FLOW[status] || [];
 
-                                    const availableTransitions =
-                                        STATUS_FLOW[
-                                            status
-                                            ] || [];
+                                return (
+                                    <article
+                                        key={applicationId ?? `${email}-${name}`}
+                                        className={`ra-card ${
+                                            String(getApplicationId(selectedApplicant)) === String(applicationId) &&
+                                            selectedApplicant
+                                                ? "selected"
+                                                : ""
+                                        }`}
+                                    >
+                                        <div className="ra-card-main">
+                                            <div className="ra-avatar">{getInitials(name)}</div>
 
-                                    const initials = name
-                                        .split(" ")
-                                        .filter(Boolean)
-                                        .slice(0, 2)
-                                        .map((part) =>
-                                            part[0]?.toUpperCase()
-                                        )
-                                        .join("");
-
-                                    return (
-                                        <article
-                                            key={
-                                                applicationId ||
-                                                `${email}-${name}`
-                                            }
-                                            className={`ra-card ${
-                                                selectedApplicant?.applicationId ===
-                                                applicationId
-                                                    ? "selected"
-                                                    : ""
-                                            }`}
-                                        >
-                                            <div className="ra-card-main">
-                                                <div className="ra-avatar">
-                                                    {initials ||
-                                                        "?"}
+                                            <div className="ra-applicant-info">
+                                                <div className="ra-name-row">
+                                                    <h3>{name}</h3>
+                                                    <span className={`ra-status ${statusClass(status)}`}>
+                                                        {statusLabel(status)}
+                                                    </span>
                                                 </div>
 
-                                                <div className="ra-applicant-info">
-                                                    <div className="ra-name-row">
-                                                        <h3>
-                                                            {
-                                                                name
-                                                            }
-                                                        </h3>
-
-                                                        <span
-                                                            className={`ra-status ${statusClass(
-                                                                status
-                                                            )}`}
-                                                        >
-                                                            {statusLabel(
-                                                                status
-                                                            )}
-                                                        </span>
-                                                    </div>
-
-                                                    <a
-                                                        href={`mailto:${email}`}
-                                                        className="ra-email"
-                                                    >
-                                                        <Mail
-                                                            size={
-                                                                15
-                                                            }
-                                                        />
+                                                {email ? (
+                                                    <a href={gmailComposeUrl(email)} target="_blank" rel="noreferrer" className="ra-email">
+                                                        <Mail size={15} />
                                                         {email}
                                                     </a>
+                                                ) : (
+                                                    <span className="ra-email">No email available</span>
+                                                )}
 
-                                                    <div className="ra-meta">
+                                                <div className="ra-meta">
+                                                    <span>
+                                                        Applied {formatDate(applicant?.appliedAt)}
+                                                    </span>
+                                                    {applicant?.updatedAt && (
                                                         <span>
-                                                            Applied{" "}
-                                                            {formatDate(
-                                                                applicant?.appliedAt
-                                                            )}
+                                                            Updated {formatDate(applicant.updatedAt)}
                                                         </span>
-
-                                                        {applicant?.updatedAt && (
-                                                            <span>
-                                                                Updated{" "}
-                                                                {formatDate(
-                                                                    applicant.updatedAt
-                                                                )}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </div>
-
-                                                <button
-                                                    type="button"
-                                                    className="ra-view-button"
-                                                    onClick={() =>
-                                                        setSelectedApplicant(
-                                                            applicant
-                                                        )
-                                                    }
-                                                >
-                                                    View
-                                                </button>
                                             </div>
 
-                                            {availableTransitions.length >
-                                                0 && (
-                                                    <div className="ra-card-footer">
-                                                        <div className="ra-action-label">
-                                                            Move application
-                                                        </div>
+                                            <button
+                                                type="button"
+                                                className="ra-view-button"
+                                                onClick={() => setSelectedApplicant(applicant)}
+                                                aria-label={`View ${name}'s candidate profile`}
+                                            >
+                                                View profile
+                                            </button>
+                                        </div>
 
-                                                        <div className="ra-status-actions">
-                                                            {availableTransitions.map(
-                                                                (
-                                                                    nextStatus
-                                                                ) => (
-                                                                    <button
-                                                                        key={
-                                                                            nextStatus
-                                                                        }
-                                                                        type="button"
-                                                                        className={`ra-action-button ${statusClass(
-                                                                            nextStatus
-                                                                        )}`}
-                                                                        disabled={
-                                                                            updatingId ===
-                                                                            applicationId
-                                                                        }
-                                                                        onClick={() =>
-                                                                            handleStatusChange(
-                                                                                applicationId,
-                                                                                nextStatus
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {updatingId ===
-                                                                        applicationId
-                                                                            ? "Updating..."
-                                                                            : statusLabel(
-                                                                                nextStatus
-                                                                            )}
-
-                                                                        <ChevronDown
-                                                                            size={
-                                                                                14
-                                                                            }
-                                                                        />
-                                                                    </button>
-                                                                )
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                        </article>
-                                    );
-                                }
-                            )}
+                                        {availableTransitions.length > 0 && (
+                                            <div className="ra-card-footer">
+                                                <div className="ra-action-label">
+                                                    Move application
+                                                </div>
+                                                <div className="ra-status-actions">
+                                                    {availableTransitions.map((nextStatus) => (
+                                                        <button
+                                                            key={nextStatus}
+                                                            type="button"
+                                                            className={`ra-action-button ${statusClass(nextStatus)}`}
+                                                            disabled={updatingId === applicationId}
+                                                            onClick={() =>
+                                                                handleStatusChange(applicationId, nextStatus)
+                                                            }
+                                                        >
+                                                            {updatingId === applicationId
+                                                                ? "Updating..."
+                                                                : statusLabel(nextStatus)}
+                                                            <ChevronDown size={14} />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </article>
+                                );
+                            })}
                         </div>
                     )}
                 </section>
 
-                {/* DETAIL DRAWER */}
                 {selectedApplicant && (
                     <div
                         className="ra-drawer-backdrop"
-                        onClick={() =>
-                            setSelectedApplicant(null)
-                        }
+                        onClick={closeCandidateDrawer}
+                        role="presentation"
                     >
                         <aside
                             className="ra-drawer"
-                            onClick={(event) =>
-                                event.stopPropagation()
-                            }
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="ra-candidate-drawer-title"
+                            onClick={(event) => event.stopPropagation()}
                         >
                             <div className="ra-drawer-header">
                                 <div>
-                                    <span>
-                                        Candidate profile
-                                    </span>
-                                    <h2>
-                                        {getApplicantName(
-                                            selectedApplicant
-                                        )}
+                                    <span>Candidate review</span>
+                                    <h2 id="ra-candidate-drawer-title">
+                                        {getApplicantName(selectedApplicant)}
                                     </h2>
                                 </div>
-
                                 <button
                                     type="button"
                                     className="ra-drawer-close"
-                                    onClick={() =>
-                                        setSelectedApplicant(
-                                            null
-                                        )
-                                    }
+                                    onClick={closeCandidateDrawer}
+                                    aria-label="Close candidate profile"
                                 >
                                     <XCircle size={21} />
                                 </button>
@@ -770,105 +788,184 @@ export default function RecruiterApplicants() {
                             <div className="ra-drawer-body">
                                 <div className="ra-profile-hero">
                                     <div className="ra-avatar ra-avatar-large">
-                                        {getApplicantName(
-                                            selectedApplicant
-                                        )
-                                            .split(" ")
-                                            .filter(Boolean)
-                                            .slice(0, 2)
-                                            .map((part) =>
-                                                part[0]?.toUpperCase()
-                                            )
-                                            .join("")}
+                                        {getInitials(getApplicantName(selectedApplicant))}
                                     </div>
-
                                     <div>
-                                        <h3>
-                                            {getApplicantName(
-                                                selectedApplicant
-                                            )}
-                                        </h3>
-
-                                        <a
-                                            href={`mailto:${getApplicantEmail(
-                                                selectedApplicant
-                                            )}`}
-                                        >
-                                            {getApplicantEmail(
-                                                selectedApplicant
-                                            )}
-                                        </a>
+                                        <h3>{getApplicantName(selectedApplicant)}</h3>
+                                        {getApplicantEmail(selectedApplicant) ? (
+                                            <a href={gmailComposeUrl(getApplicantEmail(selectedApplicant))} target="_blank" rel="noreferrer">
+                                                {getApplicantEmail(selectedApplicant)}
+                                            </a>
+                                        ) : (
+                                            <span className="ra-candidate-muted">
+                                                No email available
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div className="ra-detail-section">
-                                    <span className="ra-detail-label">
-                                        Application status
-                                    </span>
-
+                                    <span className="ra-detail-label">Application status</span>
                                     <div
-                                        className={`ra-status large ${statusClass(
-                                            selectedApplicant.status
-                                        )}`}
+                                        className={`ra-status large ${statusClass(selectedApplicant.status)}`}
                                     >
-                                        {statusLabel(
-                                            selectedApplicant.status
-                                        )}
+                                        {statusLabel(selectedApplicant.status)}
                                     </div>
                                 </div>
 
                                 <div className="ra-detail-grid">
                                     <div>
-                                        <span>
-                                            Application ID
-                                        </span>
-                                        <strong>
-                                            #
-                                            {getApplicationId(
-                                                selectedApplicant
-                                            )}
-                                        </strong>
+                                        <span>Application ID</span>
+                                        <strong>#{getApplicationId(selectedApplicant) ?? "—"}</strong>
                                     </div>
-
                                     <div>
                                         <span>
-                                            Applied on
+                                            <CalendarDays size={13} /> Applied on
                                         </span>
-                                        <strong>
-                                            {formatDate(
-                                                selectedApplicant.appliedAt
-                                            )}
-                                        </strong>
+                                        <strong>{formatDate(selectedApplicant.appliedAt)}</strong>
                                     </div>
-
                                     <div>
                                         <span>Job</span>
                                         <strong>
                                             {selectedApplicant.jobTitle ||
+                                                selectedApplicant.job?.title ||
                                                 jobTitle ||
                                                 "—"}
                                         </strong>
                                     </div>
-
                                     <div>
                                         <span>Company</span>
                                         <strong>
                                             {selectedApplicant.companyName ||
+                                                selectedApplicant.job?.companyName ||
                                                 "Your company"}
                                         </strong>
                                     </div>
                                 </div>
 
-                                <div className="ra-drawer-actions">
-                                    <a
-                                        href={`mailto:${getApplicantEmail(
-                                            selectedApplicant
-                                        )}`}
-                                        className="recruiter-primary-button"
+                                <section className="ra-candidate-academics">
+                                    <h3>
+                                        <GraduationCap size={18} />
+                                        Academic profile
+                                    </h3>
+
+                                    {candidateProfileLoading ? (
+                                        <p className="ra-candidate-muted">
+                                            Loading candidate profile...
+                                        </p>
+                                    ) : candidateProfileError ? (
+                                        <p className="ra-candidate-error" role="alert">
+                                            {candidateProfileError}
+                                        </p>
+                                    ) : candidateProfile ? (
+                                        <>
+                                            <div className="ra-candidate-field">
+                                                <span>College / University</span>
+                                                <strong>{candidateProfile.college || "Not provided"}</strong>
+                                            </div>
+                                            <div className="ra-candidate-field">
+                                                <span>Degree</span>
+                                                <strong>{candidateProfile.degree || "Not provided"}</strong>
+                                            </div>
+                                            <div className="ra-candidate-field">
+                                                <span>Branch / specialization</span>
+                                                <strong>{candidateProfile.branch || "Not provided"}</strong>
+                                            </div>
+                                            <div className="ra-candidate-field">
+                                                <span>Graduation year</span>
+                                                <strong>{candidateProfile.graduationYear || "Not provided"}</strong>
+                                            </div>
+                                            <div className="ra-candidate-bio">
+                                                <span>About the candidate</span>
+                                                <p>{candidateProfile.bio || "No introduction provided."}</p>
+                                            </div>
+                                            <div className="ra-candidate-skills">
+                                                <span>Skills</span>
+                                                <div className="ra-skill-list">
+                                                    {candidateProfile.skills?.length ? (
+                                                        candidateProfile.skills.map((skill) => (
+                                                            <span key={skill.id ?? skill.name}>
+                                                                {skill.name}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <p>No skills added yet.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <p className="ra-candidate-muted">
+                                            Candidate profile details are not available.
+                                        </p>
+                                    )}
+                                </section>
+
+                                <section className="ra-candidate-resume">
+                                    <div>
+                                        <h3>
+                                            <FileText size={18} />
+                                            Candidate resume
+                                        </h3>
+                                        <p>
+                                            Download the candidate's uploaded PDF to review
+                                            experience, projects and qualifications.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="ra-resume-download"
+                                        onClick={handleDownloadCandidateResume}
+                                        disabled={resumeDownloading}
                                     >
-                                        <Mail size={16} />
-                                        Contact candidate
-                                    </a>
+                                        <Download size={16} />
+                                        {resumeDownloading
+                                            ? "Preparing download..."
+                                            : "Download resume"}
+                                    </button>
+                                </section>
+
+                                <div className="ra-drawer-actions">
+                                    {getApplicantEmail(selectedApplicant) ? (
+                                        <a
+                                            href={gmailComposeUrl(getApplicantEmail(selectedApplicant))}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="recruiter-primary-button"
+                                        >
+                                            <Mail size={16} />
+                                            Contact candidate
+                                        </a>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="recruiter-primary-button"
+                                            disabled
+                                        >
+                                            <Mail size={16} />
+                                            Email unavailable
+                                        </button>
+                                    )}
+
+                                    <button
+                                        type="button"
+                                        className="ra-email-selected"
+                                        onClick={() => openDecisionEmail("SELECTED")}
+                                        disabled={!getApplicantEmail(selectedApplicant)}
+                                    >
+                                        <CheckCircle2 size={16} />
+                                        Draft Round 1 Selection Email
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="ra-email-rejected"
+                                        onClick={() => openDecisionEmail("REJECTED")}
+                                        disabled={!getApplicantEmail(selectedApplicant)}
+                                    >
+                                        <XCircle size={16} />
+                                        Draft Round 1 Rejection Email
+                                    </button>
                                 </div>
                             </div>
                         </aside>

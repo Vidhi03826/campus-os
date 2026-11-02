@@ -1,3 +1,4 @@
+
 package com.vidhi.campusos.config;
 
 import com.vidhi.campusos.security.CustomAccessDeniedHandler;
@@ -57,40 +58,30 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(
-                List.of(frontendUrl)
-        );
+        configuration.setAllowedOrigins(List.of(frontendUrl));
 
-        configuration.setAllowedMethods(
-                List.of(
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                        "OPTIONS"
-                )
-        );
+        configuration.setAllowedMethods(List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+        ));
 
-        configuration.setAllowedHeaders(
-                List.of(
-                        "Authorization",
-                        "Content-Type"
-                )
-        );
+        configuration.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type"
+        ));
 
         configuration.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source =
                 new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration(
-                "/**",
-                configuration
-        );
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }
@@ -108,9 +99,7 @@ public class SecurityConfig {
                 )
 
                 .formLogin(form -> form.disable())
-
                 .httpBasic(basic -> basic.disable())
-
                 .logout(logout -> logout.disable())
 
                 .sessionManagement(session ->
@@ -120,20 +109,18 @@ public class SecurityConfig {
                 )
 
                 .headers(headers ->
-                        headers.frameOptions(frame ->
-                                frame.deny()
-                        )
+                        headers.frameOptions(frame -> frame.deny())
                 )
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // CORS preflight
+                        // CORS preflight requests
                         .requestMatchers(
                                 HttpMethod.OPTIONS,
                                 "/**"
                         ).permitAll()
 
-                        // Public endpoints
+                        // Public application endpoints
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/jobs",
@@ -150,17 +137,13 @@ public class SecurityConfig {
                                 "/error"
                         ).permitAll()
 
-                        // Everything else requires authentication
+                        // All other endpoints require authentication
                         .anyRequest().authenticated()
                 )
 
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(
-                                authenticationEntryPoint
-                        )
-                        .accessDeniedHandler(
-                                accessDeniedHandler
-                        )
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
 
                 .addFilterBefore(

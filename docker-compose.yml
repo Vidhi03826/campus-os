@@ -44,10 +44,12 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: "6379"
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: L+T/R58xHxP6k5t/izzkvN2tAnh0SzZ+rlib7yZ2MNM=
       JWT_EXPIRATION: "3600000"
       JWT_REFRESH_EXPIRATION: "604800000"
       APP_STORAGE_RESUME_DIR: /app/uploads/resumes
+      APP_ADMIN_EMAIL: admin.campusos.test@example.com
+      APP_ADMIN_PASSWORD: "CampusOS_Admin#2026"
     ports:
       - "8081:8080"
     volumes:

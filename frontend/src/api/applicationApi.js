@@ -1,4 +1,9 @@
+
 import api from "./axios";
+
+// =========================================================
+// STUDENT: APPLICATIONS
+// =========================================================
 
 export const applyToJob = async (jobId) => {
     const response = await api.post(
@@ -40,7 +45,10 @@ export const withdrawApplication = async (applicationId) => {
     return response.data;
 };
 
-// Recruiter: fetch applicants for a job
+// =========================================================
+// RECRUITER: APPLICANTS
+// =========================================================
+
 export const getApplicantsForJob = async (jobId) => {
     const response = await api.get(
         `/api/recruiters/me/jobs/${jobId}/applications`
@@ -49,7 +57,6 @@ export const getApplicantsForJob = async (jobId) => {
     return response.data;
 };
 
-// Recruiter: update an application's status
 export const updateApplicationStatus = async (
     applicationId,
     status
@@ -60,4 +67,30 @@ export const updateApplicationStatus = async (
     );
 
     return response.data;
+};
+
+// =========================================================
+// RECRUITER: CANDIDATE PROFILE
+// =========================================================
+
+export const getCandidateProfile = async (applicationId) => {
+    const response = await api.get(
+        `/api/recruiters/me/applications/${applicationId}/candidate-profile`
+    );
+
+    return response.data;
+};
+
+// =========================================================
+// RECRUITER: CANDIDATE RESUME
+// Returns a blob response for downloading the PDF.
+// =========================================================
+
+export const downloadCandidateResume = async (applicationId) => {
+    return api.get(
+        `/api/recruiters/me/applications/${applicationId}/resume`,
+        {
+            responseType: "blob",
+        }
+    );
 };

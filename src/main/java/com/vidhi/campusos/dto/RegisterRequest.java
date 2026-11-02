@@ -1,7 +1,9 @@
+
 package com.vidhi.campusos.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
@@ -21,6 +23,13 @@ public record RegisterRequest(
                 max = 100,
                 message = "Password must be between 8 and 100 characters"
         )
-        String password
+        String password,
+
+        @NotBlank(message = "Please select an account type")
+        @Pattern(
+                regexp = "(?i)STUDENT|RECRUITER",
+                message = "Account type must be STUDENT or RECRUITER"
+        )
+        String role
 ) {
 }

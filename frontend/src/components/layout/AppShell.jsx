@@ -288,6 +288,7 @@ function AppShell() {
      * Close mobile navigation when route changes.
      */
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         setSidebarOpen(false);
     }, [location.pathname]);
 
@@ -300,6 +301,7 @@ function AppShell() {
                 event.key === "Escape" &&
                 sidebarOpen
             ) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
                 setSidebarOpen(false);
             }
         };

@@ -1,13 +1,18 @@
+
 package com.vidhi.campusos.controller;
 
+import com.vidhi.campusos.dto.UpdateUserRequest;
 import com.vidhi.campusos.dto.UserResponse;
 import com.vidhi.campusos.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.core.userdetails.UserDetails;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -23,5 +28,13 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         return userService.getCurrentUser(userDetails);
+    }
+
+    @PutMapping("/me")
+    public UserResponse updateCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        return userService.updateCurrentUser(userDetails, request);
     }
 }

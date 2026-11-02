@@ -31,38 +31,37 @@ const formatDate = (value) => {
 
 const getNotificationIcon = (type) => {
     const icons = {
-        APPLICATION_SUBMITTED: "✉",
-        APPLICATION_STATUS_CHANGED: "↗",
+        APPLICATION_SUBMITTED: "âœ‰",
+        APPLICATION_STATUS_CHANGED: "â†—",
     };
 
-    return icons[type] || "🔔";
+    return icons[type] || "ðŸ””";
 };
-const isRecruiter = role === "RECRUITER";
-
-const pageCopy = isRecruiter
-    ? {
-        eyebrow: "YOUR CAMPUSOS HIRING ACTIVITY",
-        title: "Notifications",
-        subtitle:
-            "Stay up to date with candidate applications and hiring activity.",
-        summary:
-            "Application updates and recruitment activity will appear here.",
-        emptyTitle: "No notifications yet",
-        emptyDescription:
-            "Candidate applications and hiring updates will appear here.",
-    }
-    : {
-        eyebrow: "YOUR CAMPUSOS UPDATES",
-        title: "Notifications",
-        subtitle:
-            "Stay up to date with your applications and important activity.",
-        summary:
-            "Application updates and hiring activity will appear here.",
-        emptyTitle: "No notifications yet",
-        emptyDescription:
-            "When there is activity on your applications, you'll see it here.",
-    };
 export default function StudentNotifications({ role = "STUDENT" }) {
+    const isRecruiter = role === "RECRUITER";
+    const pageCopy = isRecruiter
+        ? {
+            eyebrow: "YOUR CAMPUSOS HIRING ACTIVITY",
+            title: "Notifications",
+            subtitle:
+                "Stay up to date with candidate applications and hiring activity.",
+            summary:
+                "Application updates and recruitment activity will appear here.",
+            emptyTitle: "No notifications yet",
+            emptyDescription:
+                "Candidate applications and hiring updates will appear here.",
+        }
+        : {
+            eyebrow: "YOUR CAMPUSOS UPDATES",
+            title: "Notifications",
+            subtitle:
+                "Stay up to date with your applications and important activity.",
+            summary:
+                "Application updates and hiring activity will appear here.",
+            emptyTitle: "No notifications yet",
+            emptyDescription:
+                "When there is activity on your applications, you'll see it here.",
+        };
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [page, setPage] = useState(0);
@@ -114,6 +113,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
     }, [page]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
         loadNotifications();
     }, [loadNotifications]);
 
@@ -197,13 +197,13 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                             onClick={loadNotifications}
                             disabled={loading}
                         >
-                            {loading ? "Refreshing..." : "↻ Refresh"}
+                            {loading ? "Refreshing..." : "â†» Refresh"}
                         </button>
                     </div>
                 </header>
 
                 <section className="sn-summary">
-                    <div className="sn-summary-icon">🔔</div>
+                    <div className="sn-summary-icon">ðŸ””</div>
                     <div>
                         <strong>
                             {unreadCount === 0
@@ -236,7 +236,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                             onClick={() => setError("")}
                             aria-label="Dismiss error"
                         >
-                            ×
+                            Ã—
                         </button>
                     </div>
                 )}
@@ -249,7 +249,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                             onClick={() => setSuccess("")}
                             aria-label="Dismiss message"
                         >
-                            ×
+                            Ã—
                         </button>
                     </div>
                 )}
@@ -281,7 +281,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                         </div>
                     ) : visibleNotifications.length === 0 ? (
                         <div className="sn-state">
-                            <div className="sn-empty-icon">♧</div>
+                            <div className="sn-empty-icon">â™§</div>
                             <h3>
                                 {notifications.length === 0
                                     ? "No notifications yet"
@@ -348,7 +348,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                                 disabled={page === 0}
                                 onClick={() => setPage((current) => current - 1)}
                             >
-                                ← Previous
+                                â† Previous
                             </button>
                             <span>
                                 Page {page + 1} of {totalPages}
@@ -358,7 +358,7 @@ export default function StudentNotifications({ role = "STUDENT" }) {
                                 disabled={page + 1 >= totalPages}
                                 onClick={() => setPage((current) => current + 1)}
                             >
-                                Next →
+                                Next â†’
                             </button>
                         </div>
                     )}
