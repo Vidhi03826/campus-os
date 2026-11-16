@@ -150,7 +150,7 @@ function RecruiterDashboard() {
         location: "",
         designation: "",
     });
-    const loadCompany = async () => {
+    const loadCompany = useCallback(async () => {
         try {
             setCompanyLoading(true);
 
@@ -169,7 +169,7 @@ function RecruiterDashboard() {
         } finally {
             setCompanyLoading(false);
         }
-    };
+    }, []);
     const loadJobs = useCallback(async (isRefresh = false) => {
         if (isRefresh) {
             setRefreshing(true);
@@ -193,9 +193,15 @@ function RecruiterDashboard() {
     }, []);
 
     useEffect(() => {
-        loadJobs();
-        loadCompany();
-    }, []);
+        // Defer the initial requests so their loading-state updates happen
+        // outside the synchronous effect body.
+        const timer = window.setTimeout(() => {
+            loadJobs();
+            loadCompany();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
+    }, [loadJobs, loadCompany]);
 
     const stats = useMemo(() => {
         const published = jobs.filter(

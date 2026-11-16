@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser } from "../../api/authApi";
 import {
     getMyStudentProfile,
@@ -97,7 +97,7 @@ export default function Profile() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
-    async function loadProfile() {
+    const loadProfile = useCallback(async () => {
         setLoading(true);
         setError("");
         setMessage("");
@@ -149,11 +149,15 @@ export default function Profile() {
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
     useEffect(() => {
-        loadProfile();
-    }, []);
+        const timer = setTimeout(() => {
+            loadProfile();
+        }, 0);
+
+        return () => clearTimeout(timer);
+    }, [loadProfile]);
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -622,3 +626,4 @@ export default function Profile() {
         </main>
     );
 }
+

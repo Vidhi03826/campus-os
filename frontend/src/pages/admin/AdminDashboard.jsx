@@ -7,7 +7,6 @@ import {
     verifyRecruiter,
     rejectRecruiter,
     getAdminJobs,
-    closeAdminJob,
     getAdminUsers,
     activateAdminUser,
     deactivateAdminUser,
@@ -60,7 +59,12 @@ function AdminDashboard() {
     }, []);
 
     useEffect(() => {
-        loadData();
+        // Defer initial loading-state updates until after the effect body.
+        const timer = window.setTimeout(() => {
+            loadData();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
     }, [loadData]);
 
     const loadSection = async (id) => {

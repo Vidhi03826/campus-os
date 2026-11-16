@@ -213,7 +213,13 @@ export default function RecruiterApplicants() {
     );
 
     useEffect(() => {
-        loadApplicants();
+        // Start loading after the effect has committed to avoid synchronous
+        // state updates from the effect body.
+        const timer = window.setTimeout(() => {
+            loadApplicants();
+        }, 0);
+
+        return () => window.clearTimeout(timer);
     }, [loadApplicants]);
 
     const counts = useMemo(() => {
@@ -342,39 +348,43 @@ export default function RecruiterApplicants() {
     useEffect(() => {
         let cancelled = false;
 
-        if (!selectedApplicationId) {
+        // Defer state initialization and the profile request until after the
+        // effect body. Cleanup cancels both the scheduled start and response
+        // updates when the selected applicant changes or the page unmounts.
+        const timer = window.setTimeout(() => {
+            if (!selectedApplicationId) {
+                setCandidateProfile(null);
+                setCandidateProfileError("");
+                setCandidateProfileLoading(false);
+                return;
+            }
+
             setCandidateProfile(null);
             setCandidateProfileError("");
-            setCandidateProfileLoading(false);
-            return () => {
-                cancelled = true;
-            };
-        }
+            setCandidateProfileLoading(true);
 
-        setCandidateProfile(null);
-        setCandidateProfileError("");
-        setCandidateProfileLoading(true);
-
-        getCandidateProfile(selectedApplicationId)
-            .then((data) => {
-                if (!cancelled) setCandidateProfile(data);
-            })
-            .catch((err) => {
-                if (!cancelled) {
-                    setCandidateProfileError(
-                        getErrorMessage(
-                            err,
-                            "Unable to load this candidate's profile."
-                        )
-                    );
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setCandidateProfileLoading(false);
-            });
+            getCandidateProfile(selectedApplicationId)
+                .then((data) => {
+                    if (!cancelled) setCandidateProfile(data);
+                })
+                .catch((err) => {
+                    if (!cancelled) {
+                        setCandidateProfileError(
+                            getErrorMessage(
+                                err,
+                                "Unable to load this candidate's profile."
+                            )
+                        );
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setCandidateProfileLoading(false);
+                });
+        }, 0);
 
         return () => {
             cancelled = true;
+            window.clearTimeout(timer);
         };
     }, [selectedApplicationId]);
 

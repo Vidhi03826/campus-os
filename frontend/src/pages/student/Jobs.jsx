@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Bookmark,
     BriefcaseBusiness,
@@ -488,7 +488,7 @@ function Jobs() {
     const [showMobileFilters, setShowMobileFilters] =
         useState(false);
 
-    const loadJobs = async () => {
+    const loadJobs = useCallback(async () => {
         try {
             setLoading(true);
             setError("");
@@ -540,19 +540,22 @@ function Jobs() {
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
-        loadJobs();
     }, [
-        page,
-        sort,
         search,
         location,
         jobType,
         workMode,
+        page,
+        sort,
     ]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            loadJobs();
+        }, 0);
+
+        return () => clearTimeout(timer);
+    }, [loadJobs]);
 
     useEffect(() => {
         let cancelled = false;

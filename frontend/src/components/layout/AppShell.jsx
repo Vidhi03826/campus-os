@@ -25,9 +25,9 @@ import {
     useNavigate,
 } from "react-router-dom";
 
-import { useAuth } from "../../auth/AuthContext";
-import { getUnreadNotificationCount } from "../../api/notificationApi";
-
+import { useAuth } from "./auth/AuthContext";
+import { getUnreadNotificationCount } from "./api/notificationApi";
+import "./styles/app-shell-premium.css";
 const navigation = {
     STUDENT: [
         {
@@ -204,7 +204,10 @@ function AppShell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [searchFocused, setSearchFocused] = useState(false);
 
-    const links = navigation[user?.role] ?? [];
+    const links = useMemo(
+        () => navigation[user?.role] ?? [],
+        [user?.role]
+    );
 
     const currentPage = useMemo(
         () =>
@@ -301,7 +304,6 @@ function AppShell() {
                 event.key === "Escape" &&
                 sidebarOpen
             ) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- data loading updates component state
                 setSidebarOpen(false);
             }
         };

@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_DURATION = 3500;
@@ -21,11 +22,11 @@ export const useToast = () => {
 
     const showToast = useCallback(
         ({
-             type = "info",
-             title = "",
-             message = "",
-             duration = DEFAULT_DURATION,
-         }) => {
+            type = "info",
+            title = "",
+            message = "",
+            duration = DEFAULT_DURATION,
+        }) => {
             const id = `${Date.now()}-${Math.random()}`;
 
             setToasts((current) => [
@@ -50,9 +51,12 @@ export const useToast = () => {
     );
 
     useEffect(() => {
+        // Keep a stable reference for the cleanup function.
+        const activeTimers = timers.current;
+
         return () => {
-            timers.current.forEach((timer) => clearTimeout(timer));
-            timers.current.clear();
+            activeTimers.forEach((timer) => clearTimeout(timer));
+            activeTimers.clear();
         };
     }, []);
 
